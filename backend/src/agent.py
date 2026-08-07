@@ -102,7 +102,7 @@ async def my_agent(ctx: JobContext):
         # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
         # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
         tts=murf.TTS(
-                voice="Shweta", 
+                voice="anisha", 
                 locale="hi-IN",
                 style="Conversation",
                 tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
@@ -165,10 +165,10 @@ async def my_agent(ctx: JobContext):
 
         if has_devanagari or has_hindi_words:
             logger.info(f"Detected Hindi/Hinglish speech: '{event.transcript}'. Switching TTS to Hindi...")
-            session.tts.update_options(voice="Shweta", locale="hi-IN")
+            session.tts.update_options(voice="anisha", locale="hi-IN")
         else:
             logger.info(f"Detected English speech: '{event.transcript}'. Switching TTS to English...")
-            session.tts.update_options(voice="Shweta", locale="en-IN")
+            session.tts.update_options(voice="anisha", locale="en-IN")
     # To use a realtime model instead of a voice pipeline, use the following session setup instead.
     # (Note: This is for the OpenAI Realtime API. For other providers, see https://docs.livekit.io/agents/models/realtime/))
     # 1. Install livekit-agents[openai]
