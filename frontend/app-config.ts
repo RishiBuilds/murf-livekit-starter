@@ -2,18 +2,15 @@ export interface AppConfig {
   pageTitle: string;
   pageDescription: string;
   companyName: string;
-
   supportsChatInput: boolean;
   supportsVideoInput: boolean;
   supportsScreenShare: boolean;
   isPreConnectBufferEnabled: boolean;
-
   logo: string;
   startButtonText: string;
   accent?: string;
   logoDark?: string;
   accentDark?: string;
-
   audioVisualizerType?: 'bar' | 'wave' | 'grid' | 'radial' | 'aura';
   audioVisualizerColor?: `#${string}`;
   audioVisualizerColorDark?: `#${string}`;
@@ -24,49 +21,30 @@ export interface AppConfig {
   audioVisualizerRadialBarCount?: number;
   audioVisualizerRadialRadius?: number;
   audioVisualizerWaveLineWidth?: number;
-
-  // agent dispatch configuration
   agentName?: string;
-
-  // LiveKit Cloud Sandbox configuration
   sandboxId?: string;
+  supportedLanguages?: string[];
+  disclaimerText?: string;
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'Murf AI',
-  pageTitle: 'Voice Agent Starter',
-  pageDescription: 'A voice agent powered by Murf Falcon — the fastest TTS API',
-
+  companyName: 'DhanSathi',
+  pageTitle: 'DhanSathi: PM-KISAN, PMJDY, UPI Safety & Banking Help',
+  pageDescription: 'Talk to DhanSathi for government schemes, banking guidance, KYC help, and fraud safety.',
   supportsChatInput: true,
   supportsVideoInput: true,
   supportsScreenShare: true,
   isPreConnectBufferEnabled: true,
-
   logo: '/murf-logo.svg',
-  accent: '#6366F1',
+  accent: '#f5a623',
   logoDark: '/murf-logo-dark.svg',
-  accentDark: '#818cf8',
-  startButtonText: 'Start talking',
-
-  // optional: audio visualization configuration
-  // audioVisualizerType: 'bar',
-  // audioVisualizerColor: '#002cf2',
-  // audioVisualizerColorDark: '#1fd5f9',
-  // audioVisualizerColorShift: 0.3,
-  // audioVisualizerBarCount: 5,
-  // audioVisualizerType: 'radial',
-  // audioVisualizerRadialBarCount: 24,
-  // audioVisualizerRadialRadius: 100,
-  // audioVisualizerType: 'grid',
-  // audioVisualizerGridRowCount: 25,
-  // audioVisualizerGridColumnCount: 25,
-  // audioVisualizerType: 'wave',
-  // audioVisualizerWaveLineWidth: 3,
-  // audioVisualizerType: 'aura',
-
-  // agent dispatch configuration
+  accentDark: '#ffc857',
+  startButtonText: 'बातचीत शुरू करें · Start conversation',
+  audioVisualizerType: 'aura',
+  audioVisualizerColor: '#f5a623',
+  audioVisualizerColorDark: '#ffc857',
   agentName: process.env.AGENT_NAME ?? undefined,
-
-  // LiveKit Cloud Sandbox configuration
   sandboxId: undefined,
+  supportedLanguages: ['hi', 'en'],
+  disclaimerText: 'केवल मार्गदर्शन हेतु। बैंक/RBI की आधिकारिक सलाह का विकल्प नहीं है। · For guidance only. Not a substitute for official bank/RBI advice.',
 };
