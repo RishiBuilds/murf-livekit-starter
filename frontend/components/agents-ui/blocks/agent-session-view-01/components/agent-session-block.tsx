@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Track } from 'livekit-client';
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
 import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
 import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
@@ -8,6 +9,7 @@ import {
   AgentControlBar,
   type AgentControlBarControls,
 } from '@/components/agents-ui/agent-control-bar';
+import { AgentStateIndicator } from '@/components/app/agent-state-indicator';
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { cn } from '@/lib/shadcn/utils';
 import { TileLayout } from './tile-view';
@@ -156,7 +158,7 @@ export interface AgentSessionView_01Props {
 }
 
 export function AgentSessionView_01({
-  preConnectMessage = 'Agent is listening, ask it a question',
+  preConnectMessage = 'सरकारी योजना, बैंकिंग, या धोखाधड़ी के बारे में पूछें · Ask about schemes, banking, or fraud protection',
   supportsChatInput = true,
   supportsVideoInput = true,
   supportsScreenShare = true,
@@ -205,6 +207,12 @@ export function AgentSessionView_01({
       {...props}
     >
       <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
+
+      {/* Agent state indicator with listening, thinking, speaking badge and captions */}
+      <div className="absolute inset-x-0 top-6 z-20 flex justify-center md:top-10">
+        <AgentStateIndicator />
+      </div>
+
       {/* transcript */}
 
       <div className="absolute top-0 bottom-[135px] flex w-full flex-col md:bottom-[170px]">
@@ -266,6 +274,11 @@ export function AgentSessionView_01({
             isConnected={session.isConnected}
             onDisconnect={session.end}
             onIsChatOpenChange={setChatOpen}
+            onDeviceError={({ source, error }) => {
+              if (source === Track.Source.Microphone) {
+                window.dispatchEvent(new CustomEvent('dhan-mic-error', { detail: error }));
+              }
+            }}
           />
         </div>
       </motion.div>
