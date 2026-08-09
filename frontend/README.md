@@ -1,4 +1,4 @@
-# Frontend — Voice Agent UI
+# Frontend: Voice Agent UI
 
 The React/Next.js frontend for the Voice Agent Starter. Built with [LiveKit Agents UI](https://livekit.io/ui) components, it provides a polished interface for real-time voice conversations with your agent.
 
@@ -53,7 +53,7 @@ Edit [`app-config.ts`](app-config.ts) to change branding, features, and button t
 export const APP_CONFIG_DEFAULTS: AppConfig = {
   companyName: 'Murf AI',
   pageTitle: 'Voice Agent Starter',
-  pageDescription: 'A voice agent powered by Murf Falcon — the fastest TTS API',
+  pageDescription: 'A voice agent powered by Murf Falcon, the fastest TTS API',
 
   supportsChatInput: true,
   supportsVideoInput: true,
@@ -87,9 +87,9 @@ Use `audioVisualizerColor` / `audioVisualizerColorDark` to set accent colors acr
 
 All UI components are local and fully editable:
 
-- **`components/agents-ui/`** — Core UI: media controls, audio visualizers, chat transcript, session provider
-- **`components/app/`** — App-level logic: view transitions, welcome screen, theming
-- **`components/ui/`** — Primitive shadcn/ui components (button, select, tooltip, etc.)
+- **`components/agents-ui/`**: Core UI: media controls, audio visualizers, chat transcript, session provider
+- **`components/app/`**: App-level logic: view transitions, welcome screen, theming
+- **`components/ui/`**: Primitive shadcn/ui components (button, select, tooltip, etc.)
 
 To update Agents UI components to the latest version:
 
@@ -126,9 +126,9 @@ frontend/
 
 Set these environment variables:
 - `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-- `AGENT_NAME` (optional — for explicit agent dispatch)
+- `AGENT_NAME` (optional, for explicit agent dispatch)
 
-The frontend and backend don't call each other directly — they both connect to LiveKit, which handles real-time audio transport. Use the same LiveKit project credentials on both.
+The frontend and backend don't call each other directly. They both connect to LiveKit, which handles real-time audio transport. Use the same LiveKit project credentials on both.
 
 ## Links
 
@@ -138,4 +138,4 @@ The frontend and backend don't call each other directly — they both connect to
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

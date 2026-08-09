@@ -15,11 +15,22 @@ import { getSandboxTokenSource } from '@/lib/utils';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
-function AppSetup() {
+/**
+ * Inner setup component that runs hooks inside the SessionProvider.
+ * Renders the mic permission error overlay when needed.
+ */
+function AppSetup({ appConfig }: { appConfig: AppConfig }) {
   useDebugMode({ enabled: IN_DEVELOPMENT });
-  useAgentErrors();
+  const { MicErrorOverlay } = useAgentErrors();
 
-  return null;
+  return (
+    <>
+      {MicErrorOverlay}
+      <main className="grid min-h-svh grid-cols-1 place-content-center">
+        <ViewController appConfig={appConfig} />
+      </main>
+    </>
+  );
 }
 
 interface AppProps {
@@ -40,10 +51,7 @@ export function App({ appConfig }: AppProps) {
 
   return (
     <AgentSessionProvider session={session}>
-      <AppSetup />
-      <main className="grid h-svh grid-cols-1 place-content-center">
-        <ViewController appConfig={appConfig} />
-      </main>
+      <AppSetup appConfig={appConfig} />
       <StartAudioButton label="Start Audio" />
       <Toaster
         icons={{
