@@ -176,6 +176,15 @@ Default is Google Gemini. To switch:
 - **Gemini (default):** Set `GOOGLE_API_KEY` in `.env.local`
 - **OpenAI:** Set `OPENAI_API_KEY`, install `livekit-agents[openai]`, and change the `llm=` argument
 
+## Domain Data & Financial Services Scheme Eligibility Check
+
+The backend features a real domain data eligibility checker (`check_scheme_eligibility` tool and `scheme_checker.py` module).
+
+- **Data Source (Checklist Step 2):** Curated hand-built domain dataset (`src/scheme_checker.py`) reflecting official Government of India scheme guidelines (PM-KISAN, MUDRA, APY, PMJDY, PMAY, SSY).
+- **Tool Description (Checklist Step 3):** `@llm.function_tool` with explicit invocation conditions (triggers on eligibility/scheme queries, refrains during routine greetings/small talk).
+- **Out-Loud Failure Path (Checklist Step 4):** Asynchronous lookup wrapped with a 3.0s timeout. On network failure or timeout, returns explicit instructions for the LLM to speak a helpful message out loud rather than hallucinating or remaining silent.
+- **Data Currency Timestamp (Checklist Step 5):** Evaluated results state data effective dates (**August 2026 guidelines** / 2026-08-01), instructing the agent to specify when the data is from in spoken responses.
+
 ## Testing
 
 The project includes an eval suite based on the LiveKit Agents [testing framework](https://docs.livekit.io/agents/build/testing/):

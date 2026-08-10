@@ -229,6 +229,26 @@ Murf Falcon and LiveKit handle audio format internally. For advanced options, se
 
 ---
 
+## Domain Data & Financial Services Scheme Eligibility Check
+
+This agent includes a real domain data evaluation tool for Indian Government Financial Services schemes (`check_scheme_eligibility`).
+
+### Data Source & Currency (Checklist Step 2 & Step 5)
+
+- **Data Source:** Curated and verified hand-built domain dataset (`src/scheme_checker.py`) derived from official Government of India scheme guidelines (PM-KISAN, MUDRA Yojana, Atal Pension Yojana, PMJDY, PM Awas Yojana, Sukanya Samriddhi Yojana).
+- **Data Freshness / Effective Date:** **August 2026 guidelines** (Updated: 2026-08-01). The agent explicitly informs callers when data is from (e.g., _"According to government guidelines as of August 2026..."_).
+
+### Tool Design (Checklist Step 3)
+
+- The `@llm.function_tool` `check_scheme_eligibility` has a strict description guiding the model on when to fire (when scheme eligibility or qualifying schemes are requested from collected answers) and when NOT to fire (routine chit-chat or generic banking concepts).
+
+### Out-Loud Failure Handling (Checklist Step 4)
+
+- All lookup calls include asynchronous timeout protection (3.0s threshold). If an API/database lookup times out or encounters network degradation, the tool returns explicit instructions for the voice agent to speak a clear failure message out loud rather than remaining silent or inventing facts:
+  > _"I tried checking the government scheme database, but the lookup timed out right now. Based on standard guidelines as of August 2026, you can still visit your local bank branch or Common Service Centre (CSC) to verify your eligibility."_
+
+---
+
 ## Project Structure
 
 ```
