@@ -165,7 +165,7 @@ function DhanSathiAvatar({ state }: { state: string }) {
           />
 
           {/* Eyes with Natural Blinking */}
-          <g transform={isBlinking ? "scale(1, 0.1)" : "scale(1, 1)"} transform-origin="80 74">
+          <g transform={isBlinking ? "scale(1, 0.1)" : "scale(1, 1)"} style={{ transformOrigin: '80px 74px' }}>
             <ellipse cx="69" cy="74" rx="3.5" ry="4" fill="#ffffff" />
             <circle cx={isThinking ? 70.5 : 69} cy={isThinking ? 72.5 : 74} r="2.4" fill="#1e1b18" />
             <circle cx={isThinking ? 71.3 : 70} cy={isThinking ? 71.7 : 73} r="0.8" fill="#ffffff" />
