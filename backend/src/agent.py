@@ -199,14 +199,16 @@ generated from the caller's name.
             )
             return format_eligibility_response_for_llm(result)
         except Exception as err:
-            logger.exception("Unexpected error in check_scheme_eligibility tool: %s", err)
+            logger.exception(
+                "Unexpected error in check_scheme_eligibility tool: %s", err
+            )
             return (
                 "FAILURE PATH (System Error):\n"
                 "Data Version: Guidelines as of August 2026\n"
                 "INSTRUCTION FOR ASSISTANT: Speak the following out loud to the caller:\n"
-                "\"I tried checking scheme eligibility, but encountered a system issue. "
+                '"I tried checking scheme eligibility, but encountered a system issue. '
                 "According to August 2026 guidelines, please consult your nearest Common Service Centre "
-                "or bank branch to check your exact eligibility.\""
+                'or bank branch to check your exact eligibility."'
             )
 
 
@@ -227,6 +229,10 @@ async def my_agent(ctx: JobContext):
         "room": ctx.room.name,
     }
 
+    # 1. Connect to LiveKit room FIRST
+    await ctx.connect()
+
+    # 2. Initialize and start AgentSession on connected room
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=google.LLM(
@@ -258,7 +264,82 @@ async def my_agent(ctx: JobContext):
         ),
     )
 
-    await ctx.connect()
+    # 3. Wait for remote caller participant to join (timeout after 15s)
+    logger.info(
+        "Agent connected to room '%s'. Waiting for caller to join...", ctx.room.name
+    )
+    try:
+        participant = await asyncio.wait_for(ctx.wait_for_participant(), timeout=15.0)
+    except Exception as err:
+        logger.warning("Wait for participant timed out or interrupted: %s", err)
+        participant = next(iter(ctx.room.remote_participants.values()), None)
+
+    if not participant:
+        logger.warning("No remote participant found in room %s", ctx.room.name)
+        return
+
+    logger.info(
+        "Caller participant present: identity='%s', name='%s', kind=%s",
+        participant.identity,
+        participant.name,
+        participant.kind,
+    )
+
+    greeting_done = False
+    _bg_tasks = set()
+
+    async def trigger_outbound_greeting(p: rtc.RemoteParticipant):
+        nonlocal greeting_done
+        if greeting_done:
+            return
+        greeting_done = True
+
+        phone = p.attributes.get("sip.phoneNumber") or p.identity
+        name = p.name or p.identity
+        is_sip = p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
+        caller_type = "SIP Call" if is_sip else "Web User"
+        caller_summary = f"{caller_type} (Name: '{name}', Phone/Identity: '{phone}')"
+
+        logger.info("Triggering outbound greeting for %s", caller_summary)
+        instruction = (
+            f"This is an OUTBOUND call to {caller_summary}.\n"
+            "Context: The citizen was already found ELIGIBLE for the PM-KISAN financial scheme, "
+            "and their e-KYC submission deadline is approaching in 3 days.\n\n"
+            "YOU MUST OPEN THE CALL WITH THIS EXACT WARM 2-SENTENCE INTRODUCTION:\n"
+            "Sentence 1 (WHO & WHY): 'Namaste! Main DhanSathi, Financial Literacy Initiative se baat kar raha hoon. Aaj aapko yaad dilane ke liye call kiya hai ki aapke PM-KISAN application ki e-KYC deadline 3 dinon mein poori hone wali hai.' "
+            "(Or in English: 'Namaste! This is DhanSathi from the Financial Literacy Initiative calling to remind you that your PM-KISAN scheme e-KYC submission deadline is approaching in 3 days for your eligible application.')\n"
+            "Sentence 2 (HOW TO MAKE IT STOP): 'Agar aap aage se reminders nahi chahte, toh bas Stop calling bol dein aur hum turant aapka number hata denge.' "
+            "(Or in English: 'If you prefer not to receive reminder calls from us, just say Stop calling and we will remove your number immediately.')"
+        )
+        await session.generate_reply(instructions=instruction)
+
+    # For SIP calls, trigger greeting when audio track is subscribed or after brief pause
+    if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
+        logger.info(
+            "SIP caller detected. Listening for audio track subscription / pickup..."
+        )
+
+        has_audio = any(
+            pub.subscribed for pub in participant.track_publications.values()
+        )
+        if has_audio:
+            await trigger_outbound_greeting(participant)
+        else:
+
+            @ctx.room.on("track_subscribed")
+            def on_track_subscribed(track, publication, p):
+                if p.sid == participant.sid and track.kind == rtc.TrackKind.KIND_AUDIO:
+                    logger.info("Audio track subscribed for SIP participant!")
+                    task = asyncio.create_task(trigger_outbound_greeting(p))
+                    _bg_tasks.add(task)
+                    task.add_done_callback(_bg_tasks.discard)
+
+            # Short fallback timer (1.5 seconds) to ensure greeting fires
+            await asyncio.sleep(1.5)
+            if not greeting_done:
+                await trigger_outbound_greeting(participant)
+    else:
+        await trigger_outbound_greeting(participant)
 
 
 if __name__ == "__main__":
