@@ -1,4 +1,4 @@
-import { ArrowUpRight, BadgeIndianRupee, Landmark, Mic, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowUpRight, BadgeIndianRupee, Headphones, Landmark, Mic, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const features = [
@@ -21,7 +21,19 @@ export const WelcomeView = ({ startButtonText, onStartCall, ref }: React.Compone
     <section className="relative mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-6xl flex-col justify-between">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3"><div className="brand-mark"><span>₹</span></div><div><p className="text-sm font-extrabold tracking-tight">DhanSathi</p><p className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase">Financial companion</p></div></div>
-        <div className="flex items-center gap-2"><div className="language-pill">हिंदी <span>•</span> ENG</div><div className="online-pill"><span className="online-dot" />Available</div></div>
+        <div className="flex items-center gap-2">
+          <a
+            href="/escalations"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3.5 py-1.5 text-xs font-bold text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 transition-all shadow-sm"
+          >
+            <Headphones size={14} className="text-indigo-400" />
+            <span>Open Escalations</span>
+          </a>
+          <div className="language-pill">हिंदी <span>•</span> ENG</div>
+          <div className="online-pill"><span className="online-dot" />Available</div>
+        </div>
       </div>
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
         <div className="voice-orb mb-7 sm:mb-9"><div className="voice-orb-ring voice-orb-ring-one" /><div className="voice-orb-ring voice-orb-ring-two" /><div className="voice-orb-core"><Mic size={34} strokeWidth={2.2} /></div><span className="voice-orb-pulse" /></div>

@@ -1,3 +1,4 @@
+import os
 import pytest
 from livekit.agents import AgentSession, inference, llm
 
@@ -108,3 +109,73 @@ async def test_refuses_harmful_request() -> None:
 
         # Ensures there are no function calls or other unexpected events
         result.expect.no_more_events()
+
+
+@pytest.mark.asyncio
+async def test_create_escalation_tool_success() -> None:
+    """Test Assistant.create_escalation directly with consent granted."""
+    from db import get_escalation, init_db
+
+    # Ensure default db initialized with escalations table
+    init_db()
+
+    assistant = Assistant()
+
+    class MockContext:
+        pass
+
+    res = await assistant.create_escalation(
+        context=MockContext(),
+        caller_name="Ramesh",
+        reason="fraud",
+        summary="Fraud reported on savings account.",
+        what_agent_checked="Checked identity.",
+        urgency="critical",
+        caller_language="hi-IN",
+        preferred_followup="phone",
+        consent_given=True,
+    )
+    assert "Escalation created successfully" in res
+    assert "Reference ID: ESC-" in res
+
+    # Verify ticket in DB
+    esc_id = res.split("Reference ID: ")[1].split(".")[0].strip()
+    ticket = get_escalation(esc_id)
+    assert ticket is not None
+    assert ticket["caller_name"] == "Ramesh"
+    assert ticket["reason"] == "fraud"
+    assert ticket["urgency"] == "critical"
+
+
+@pytest.mark.asyncio
+async def test_create_escalation_tool_denied_consent() -> None:
+    """Test Assistant.create_escalation tool when caller denies consent (Step 4)."""
+    assistant = Assistant()
+
+    class MockContext:
+        pass
+
+    res = await assistant.create_escalation(
+        context=MockContext(),
+        caller_name="Priya",
+        reason="human_decision_needed",
+        summary="Wants loan approval.",
+        what_agent_checked="Explained agent limitations.",
+        urgency="high",
+        caller_language="en-IN",
+        preferred_followup="phone",
+        consent_given=False,
+    )
+
+    assert "declined to share their information" in res
+    assert "Nothing was sent" in res
+
+
+def test_ensure_escalation_api_started() -> None:
+    """Test background Escalation API thread initialization."""
+    from agent import ensure_escalation_api_started
+
+    ensure_escalation_api_started(port=8999)
+    ensure_escalation_api_started(port=8999)
+
+

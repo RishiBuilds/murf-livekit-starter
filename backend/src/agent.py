@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import threading
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -20,12 +21,14 @@ from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from db import (
+    create_escalation as db_create_escalation,
     find_user_by_name,
     get_user,
     init_db,
     normalize_user_id,
     save_user_memory,
 )
+from escalation_api import run_server
 from prompt import SYSTEM_PROMPT
 from scheme_checker import (
     format_eligibility_response_for_llm,
@@ -35,6 +38,42 @@ from scheme_checker import (
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
+
+_escalation_api_thread: threading.Thread | None = None
+_escalation_api_lock = threading.Lock()
+
+
+def ensure_escalation_api_started(port: int = 8000) -> None:
+    """Ensure the Escalation REST API & Web Dashboard is running in a background thread."""
+    global _escalation_api_thread
+    with _escalation_api_lock:
+        if _escalation_api_thread is not None and _escalation_api_thread.is_alive():
+            return
+
+        def _runner():
+            try:
+                run_server(port=port)
+            except OSError as e:
+                logger.info(
+                    "Escalation API server port %d already in use or active: %s",
+                    port,
+                    e,
+                )
+            except Exception as exc:
+                logger.error("Error in background Escalation API server: %s", exc)
+
+        _escalation_api_thread = threading.Thread(
+            target=_runner, daemon=True, name="EscalationAPIServer"
+        )
+        _escalation_api_thread.start()
+        logger.info(
+            "Background Escalation Support API & Web Dashboard automatically started at http://localhost:%d/",
+            port,
+        )
+
+
+# Ensure escalation API server starts immediately when agent module is loaded
+ensure_escalation_api_started()
 
 
 class Assistant(Agent):
@@ -211,6 +250,110 @@ generated from the caller's name.
                 'or bank branch to check your exact eligibility."'
             )
 
+    @llm.function_tool
+    async def create_escalation(
+        self,
+        context: RunContext,
+        caller_name: str,
+        reason: str,
+        summary: str,
+        what_agent_checked: str,
+        urgency: str,
+        caller_language: str,
+        preferred_followup: str,
+        consent_given: bool,
+    ):
+        """Create a human-help escalation request when the caller's situation
+        requires human intervention.
+
+        WHEN TO CALL THIS TOOL:
+        1. FRAUD REPORT: The caller reports suspected fraud, unauthorized
+           transactions, or an active scam targeting them.
+        2. HUMAN DECISION NEEDED: The caller needs something only a human
+           can do — loan approval, account dispute, KYC override, complaint
+           against a branch, or any decision requiring human authority.
+        3. EXPLICIT USER COMMAND: The caller explicitly tells or asks you to
+           escalate, transfer them to a human, talk to a human agent, or create
+           an escalation ticket (e.g. "escalate this", "transfer me to a human",
+           "talk to human agent").
+
+        WHEN NOT TO CALL THIS TOOL:
+        Do NOT call for routine questions about schemes, banking concepts,
+        or fraud-awareness education. Only escalate when needed or when the
+        caller explicitly asks for human transfer / escalation.
+
+        MANDATORY CONSENT STEP:
+        If YOU (the agent) initiated the escalation proposal, you MUST tell the caller
+        what information you plan to share and ask for explicit permission.
+        However, if the caller EXPLICITLY TOLD YOU to escalate or transfer them to a human,
+        treat their command as explicit consent and call this tool immediately with consent_given=true.
+
+        PRIVACY: NEVER include account numbers, Aadhaar, PAN, PINs, OTPs,
+        or passwords in the summary field. The system will scrub patterns
+        automatically, but you must avoid collecting them.
+
+        Args:
+            caller_name: The caller's name as they told you.
+            reason: Why escalation is needed. Must be one of:
+                'fraud' or 'human_decision_needed'.
+            summary: A 2-3 sentence summary: who needs help, what happened,
+                and how urgent it is. Do NOT include sensitive identifiers.
+            what_agent_checked: What you (the agent) already verified or
+                discussed with the caller before escalating.
+            urgency: How urgent this is. Must be one of:
+                'critical' (active fraud in progress),
+                'high' (fraud report or important decision),
+                'medium' (non-urgent human decision).
+            caller_language: The caller's preferred language code
+                (e.g. 'hi-IN', 'en-IN').
+            preferred_followup: How the caller wants to be contacted.
+                Must be one of: 'phone', 'email', 'sms'.
+            consent_given: True only if the caller explicitly agreed to
+                have their information shared with a human agent.
+        """
+        if not consent_given:
+            logger.info(
+                "Escalation consent not given by %s — skipping.", caller_name
+            )
+            return (
+                "The caller declined to share their information for escalation. "
+                "Nothing was sent. Respect their choice and continue helping "
+                "them as best you can. If they are reporting active fraud, "
+                "still advise them to call 1930 and visit cybercrime.gov.in."
+            )
+
+        logger.info(
+            "Creating escalation for %s (reason=%s, urgency=%s)",
+            caller_name,
+            reason,
+            urgency,
+        )
+
+        record = await asyncio.to_thread(
+            db_create_escalation,
+            caller_name=caller_name,
+            reason=reason,
+            summary=summary,
+            what_agent_checked=what_agent_checked,
+            urgency=urgency,
+            caller_language=caller_language,
+            preferred_followup=preferred_followup,
+        )
+
+        ref_id = record["escalation_id"]
+        return (
+            f"Escalation created successfully. Reference ID: {ref_id}. "
+            f"INSTRUCTIONS FOR ASSISTANT — read the following to the caller:\n"
+            f"1. Tell them their reference number is {ref_id} and ask them "
+            f"to note it down.\n"
+            f"2. Explain that a human agent will review their case and "
+            f"follow up via {preferred_followup}.\n"
+            f"3. Do NOT promise an immediate response — say 'as soon as possible' "
+            f"or 'within a reasonable timeframe'.\n"
+            f"4. If this is a fraud case, also remind them to call 1930 "
+            f"and report at cybercrime.gov.in right away."
+        )
+
 
 server = AgentServer()
 
@@ -218,6 +361,7 @@ server = AgentServer()
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
     init_db()
+    ensure_escalation_api_started()
 
 
 server.setup_fnc = prewarm
@@ -225,6 +369,7 @@ server.setup_fnc = prewarm
 
 @server.rtc_session(agent_name="my-agent")
 async def my_agent(ctx: JobContext):
+    ensure_escalation_api_started()
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
@@ -300,16 +445,13 @@ async def my_agent(ctx: JobContext):
         caller_type = "SIP Call" if is_sip else "Web User"
         caller_summary = f"{caller_type} (Name: '{name}', Phone/Identity: '{phone}')"
 
-        logger.info("Triggering outbound greeting for %s", caller_summary)
         instruction = (
-            f"This is an OUTBOUND call to {caller_summary}.\n"
-            "Context: The citizen was already found ELIGIBLE for the PM-KISAN financial scheme, "
-            "and their e-KYC submission deadline is approaching in 3 days.\n\n"
-            "YOU MUST OPEN THE CALL WITH THIS EXACT WARM 2-SENTENCE INTRODUCTION:\n"
-            "Sentence 1 (WHO & WHY): 'Namaste! Main DhanSathi, Financial Literacy Initiative se baat kar raha hoon. Aaj aapko yaad dilane ke liye call kiya hai ki aapke PM-KISAN application ki e-KYC deadline 3 dinon mein poori hone wali hai.' "
-            "(Or in English: 'Namaste! This is DhanSathi from the Financial Literacy Initiative calling to remind you that your PM-KISAN scheme e-KYC submission deadline is approaching in 3 days for your eligible application.')\n"
-            "Sentence 2 (HOW TO MAKE IT STOP): 'Agar aap aage se reminders nahi chahte, toh bas Stop calling bol dein aur hum turant aapka number hata denge.' "
-            "(Or in English: 'If you prefer not to receive reminder calls from us, just say Stop calling and we will remove your number immediately.')"
+            f"This is a call with {caller_summary}.\n\n"
+            "YOU MUST OPEN THE CALL WITH A WARM, FRIENDLY GREETING:\n"
+            "Greet the caller, state that you are DhanSathi from the Financial Literacy Initiative, "
+            "and ask how you can help them with government schemes, banking, or financial safety today.\n"
+            "For example: 'Namaste! Main DhanSathi, Financial Literacy Initiative se. Aaj main aapki kya madad kar sakta hoon?' "
+            "(Or in English: 'Namaste! This is DhanSathi from the Financial Literacy Initiative. How can I help you today?')"
         )
         await session.generate_reply(instructions=instruction)
 

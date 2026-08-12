@@ -26,4 +26,4 @@ if (Test-CommandExists "livekit-server") {
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$repoRoot\backend'; uv run python src/agent.py dev"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$repoRoot\frontend'; pnpm dev"
 
-Write-Host "Started backend and frontend in separate PowerShell windows."
+Write-Host "Started backend agent (with built-in escalation server & dashboard) and frontend in separate windows."

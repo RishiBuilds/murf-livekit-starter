@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DhanSathi — Human Escalation Support Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      --glass-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-purple: #818cf8;
+      --critical-bg: rgba(239, 68, 68, 0.15);
+      --critical-border: #ef4444;
+      --critical-text: #fca5a5;
+      --high-bg: rgba(245, 158, 11, 0.15);
+      --high-border: #f59e0b;
+      --high-text: #fcd34d;
+      --medium-bg: rgba(59, 130, 246, 0.15);
+      --medium-border: #3b82f6;
+      --medium-text: #93c5fd;
+      --open-badge-bg: rgba(239, 68, 68, 0.2);
+      --open-badge-text: #f87171;
+      --progress-badge-bg: rgba(245, 158, 11, 0.2);
+      --progress-badge-text: #fbbf24;
+      --resolved-badge-bg: rgba(34, 197, 94, 0.2);
+      --resolved-badge-text: #4ade80;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+      font-size: 1.4rem;
+    }
+
+    .brand-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #4ade80;
+      background: rgba(34, 197, 94, 0.1);
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #4ade80;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #4ade80;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+    }
+
+    .refresh-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .refresh-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .stat-card.open .stat-value { color: #f87171; }
+    .stat-card.progress .stat-value { color: #fbbf24; }
+    .stat-card.resolved .stat-value { color: #4ade80; }
+    .stat-card.critical .stat-value { color: #fca5a5; }
+
+    /* Filters Bar */
+    .filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-group {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 0.3rem;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Request Cards List */
+    .tickets-container {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .ticket-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ticket-card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+    }
+
+    .ticket-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+    }
+
+    .ticket-card.critical::before { background: #ef4444; box-shadow: 0 0 12px #ef4444; }
+    .ticket-card.high::before { background: #f59e0b; box-shadow: 0 0 12px #f59e0b; }
+    .ticket-card.medium::before { background: #3b82f6; box-shadow: 0 0 12px #3b82f6; }
+
+    .ticket-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      gap: 1rem;
+    }
+
+    .ticket-id-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .ticket-id {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--accent-blue);
+      letter-spacing: 0.5px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.3rem 0.7rem;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-urgency.critical { background: var(--critical-bg); color: var(--critical-text); border: 1px solid var(--critical-border); }
+    .badge-urgency.high { background: var(--high-bg); color: var(--high-text); border: 1px solid var(--high-border); }
+    .badge-urgency.medium { background: var(--medium-bg); color: var(--medium-text); border: 1px solid var(--medium-border); }
+
+    .badge-status.open { background: var(--open-badge-bg); color: var(--open-badge-text); }
+    .badge-status.in_progress { background: var(--progress-badge-bg); color: var(--progress-badge-text); }
+    .badge-status.resolved { background: var(--resolved-badge-bg); color: var(--resolved-badge-text); }
+
+    .ticket-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .caller-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    .reason-title {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--accent-purple);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .ticket-body {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 768px) {
+      .ticket-body { grid-template-columns: 1fr; }
+    }
+
+    .summary-box {
+      background: rgba(15, 23, 42, 0.4);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .box-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.5px;
+    }
+
+    .box-content {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .details-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 0.85rem;
+      background: rgba(15, 23, 42, 0.4);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .detail-key { color: var(--text-muted); }
+    .detail-val { font-weight: 600; color: #f1f5f9; }
+
+    .ticket-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .timestamp {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .action-btns {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .btn-action {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-start {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fcd34d;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .btn-start:hover { background: rgba(245, 158, 11, 0.35); }
+
+    .btn-resolve {
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+    .btn-resolve:hover { background: rgba(34, 197, 94, 0.35); }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: var(--glass-bg);
+      border-radius: 18px;
+      border: 1px solid var(--glass-border);
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.6;
+    }
+
+    .empty-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-icon">🛡️</div>
+        <div>
+          <h1 class="brand-title">DhanSathi Support Portal</h1>
+          <p class="brand-subtitle">Human Escalation & Fraud Intervention Desk</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="live-indicator">
+          <div class="pulse-dot"></div>
+          <span>Live Sync</span>
+        </div>
+        <button class="refresh-btn" onclick="fetchEscalations()">
+          <span>🔄</span> Refresh
+        </button>
+      </div>
+    </header>
+
+    <!-- Stats Row -->
+    <div class="stats-grid">
+      <div class="stat-card open">
+        <div class="stat-label">Open Escalations</div>
+        <div class="stat-value" id="stat-open">0</div>
+      </div>
+      <div class="stat-card progress">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value" id="stat-progress">0</div>
+      </div>
+      <div class="stat-card resolved">
+        <div class="stat-label">Resolved Today</div>
+        <div class="stat-value" id="stat-resolved">0</div>
+      </div>
+      <div class="stat-card critical">
+        <div class="stat-label">Critical Fraud Alerts</div>
+        <div class="stat-value" id="stat-critical">0</div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="tab-group">
+        <button class="tab-btn active" onclick="setFilter('open', this)">Open Requests</button>
+        <button class="tab-btn" onclick="setFilter('in_progress', this)">In Progress</button>
+        <button class="tab-btn" onclick="setFilter('resolved', this)">Resolved</button>
+        <button class="tab-btn" onclick="setFilter('all', this)">All History</button>
+      </div>
+    </div>
+
+    <!-- Tickets Grid/List -->
+    <div class="tickets-container" id="tickets-list">
+      <div class="empty-state">
+        <div class="empty-icon">⏳</div>
+        <div class="empty-title">Loading escalation requests...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentFilter = 'open';
+    let allTickets = [];
+
+    function setFilter(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      el.classList.add('active');
+      renderTickets();
+    }
+
+    async function fetchEscalations() {
+      try {
+        const response = await fetch('/api/escalations?status=all');
+        if (!response.ok) throw new Error('Network error');
+        allTickets = await response.json();
+        updateStats();
+        renderTickets();
+      } catch (err) {
+        console.error("Error fetching escalations:", err);
+      }
+    }
+
+    function updateStats() {
+      const open = allTickets.filter(t => t.status === 'open').length;
+      const progress = allTickets.filter(t => t.status === 'in_progress').length;
+      const resolved = allTickets.filter(t => t.status === 'resolved').length;
+      const critical = allTickets.filter(t => t.urgency === 'critical' && t.status !== 'resolved').length;
+
+      document.getElementById('stat-open').innerText = open;
+      document.getElementById('stat-progress').innerText = progress;
+      document.getElementById('stat-resolved').innerText = resolved;
+      document.getElementById('stat-critical').innerText = critical;
+    }
+
+    async function updateStatus(id, newStatus) {
+      try {
+        const res = await fetch(`/api/escalations/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (res.ok) {
+          await fetchEscalations();
+        }
+      } catch (err) {
+        alert("Failed to update status: " + err);
+      }
+    }
+
+    function renderTickets() {
+      const container = document.getElementById('tickets-list');
+      let filtered = allTickets;
+      if (currentFilter !== 'all') {
+        filtered = allTickets.filter(t => t.status === currentFilter);
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🎉</div>
+            <div class="empty-title">No ${currentFilter === 'all' ? '' : currentFilter} requests found</div>
+            <p>Your team has answered all human assistance requests for this view.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(ticket => {
+        const reasonText = ticket.reason === 'fraud' ? '🚨 Fraud / Scam Report' : '⚖️ Decision Needing Human Authority';
+        const formattedDate = new Date(ticket.created_at).toLocaleString();
+
+        let actionButtons = '';
+        if (ticket.status === 'open') {
+          actionButtons = `
+            <button class="btn-action btn-start" onclick="updateStatus('${ticket.escalation_id}', 'in_progress')">▶️ Take Case</button>
+            <button class="btn-action btn-resolve" onclick="updateStatus('${ticket.escalation_id}', 'resolved')">✅ Mark Resolved</button>
+          `;
+        } else if (ticket.status === 'in_progress') {
+          actionButtons = `
+            <button class="btn-action btn-resolve" onclick="updateStatus('${ticket.escalation_id}', 'resolved')">✅ Mark Resolved</button>
+          `;
+        }
+
+        return `
+          <div class="ticket-card ${ticket.urgency}">
+            <div class="ticket-header">
+              <div>
+                <div class="ticket-id-group">
+                  <span class="ticket-id">${ticket.escalation_id}</span>
+                  <span class="badge badge-urgency ${ticket.urgency}">${ticket.urgency}</span>
+                  <span class="badge badge-status ${ticket.status}">${ticket.status.replace('_', ' ')}</span>
+                </div>
+                <div class="caller-name" style="margin-top: 0.4rem;">${ticket.caller_name}</div>
+                <span class="reason-title">${reasonText}</span>
+              </div>
+              <div class="timestamp">${formattedDate}</div>
+            </div>
+
+            <div class="ticket-body">
+              <div class="summary-box">
+                <div class="box-title">Incident Summary for Human Agent</div>
+                <div class="box-content">${ticket.summary}</div>
+                ${ticket.what_agent_checked ? `
+                  <div class="box-title" style="margin-top: 0.8rem;">What Agent Checked First</div>
+                  <div class="box-content" style="color: #cbd5e1; font-size: 0.9rem;">${ticket.what_agent_checked}</div>
+                ` : ''}
+              </div>
+
+              <div class="details-list">
+                <div class="detail-item">
+                  <span class="detail-key">Preferred Follow-up</span>
+                  <span class="detail-val" style="text-transform: uppercase;">${ticket.preferred_followup}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-key">Language</span>
+                  <span class="detail-val">${ticket.caller_language}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-key">User ID</span>
+                  <span class="detail-val" style="font-family: monospace; font-size: 0.8rem;">${ticket.caller_user_id || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ticket-footer">
+              <div class="timestamp">Reference ID given to caller: <strong>${ticket.escalation_id}</strong></div>
+              <div class="action-btns">
+                ${actionButtons}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Initial load & poll every 5s
+    fetchEscalations();
+    setInterval(fetchEscalations, 5000);
+  </script>
+</body>
+</html>
