@@ -134,6 +134,26 @@ def init_db(db_path: str = _DEFAULT_DB_PATH) -> str:
             ON escalations (status, urgency);
             """
         )
+        conn.execute(
+            """\
+            CREATE TABLE IF NOT EXISTS call_logs (
+                call_id          TEXT PRIMARY KEY,
+                room_name        TEXT NOT NULL,
+                caller_identity  TEXT NOT NULL DEFAULT '',
+                caller_type      TEXT NOT NULL DEFAULT 'web' CHECK(caller_type IN ('web', 'sip')),
+                outcome          TEXT NOT NULL DEFAULT 'failed' CHECK(outcome IN ('success', 'failed')),
+                tools_used       TEXT NOT NULL DEFAULT '[]',
+                started_at       TEXT NOT NULL,
+                ended_at         TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """\
+            CREATE INDEX IF NOT EXISTS idx_call_logs_outcome
+            ON call_logs (outcome, started_at);
+            """
+        )
         conn.commit()
         logger.info("Database initialised at %s", db_path)
     finally:
@@ -250,6 +270,138 @@ def save_user_memory(
         "facts": merged,
         "last_interaction": now,
     }
+
+def save_call_log(
+    call_id: str,
+    room_name: str,
+    caller_identity: str = "",
+    caller_type: str = "web",
+    outcome: str = "failed",
+    tools_used: list[str] | None = None,
+    started_at: str = "",
+    db_path: str = _DEFAULT_DB_PATH,
+) -> dict[str, Any]:
+    """Persist a single call record when a call ends.
+
+    Privacy rules enforced here:
+    - caller_identity is stored only as an opaque LiveKit participant identity
+      (never a phone number, name, or account detail).
+    - tools_used contains only function-tool names (no arguments or transcripts).
+    """
+    if caller_type not in ("web", "sip"):
+        caller_type = "web"
+    if outcome not in ("success", "failed"):
+        outcome = "failed"
+
+    now = datetime.now(timezone.utc).isoformat()
+    if not started_at:
+        started_at = now
+    tools_json = json.dumps(tools_used or [], ensure_ascii=False)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            """\
+            INSERT OR REPLACE INTO call_logs
+                (call_id, room_name, caller_identity, caller_type,
+                 outcome, tools_used, started_at, ended_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                call_id,
+                room_name,
+                caller_identity,
+                caller_type,
+                outcome,
+                tools_json,
+                started_at,
+                now,
+            ),
+        )
+        conn.commit()
+        logger.info(
+            "Call log saved: call_id=%s room=%s outcome=%s tools=%s",
+            call_id,
+            room_name,
+            outcome,
+            tools_used,
+        )
+    finally:
+        conn.close()
+
+    return {
+        "call_id": call_id,
+        "room_name": room_name,
+        "caller_identity": caller_identity,
+        "caller_type": caller_type,
+        "outcome": outcome,
+        "tools_used": tools_used or [],
+        "started_at": started_at,
+        "ended_at": now,
+    }
+
+
+def get_call_stats(db_path: str = _DEFAULT_DB_PATH) -> dict[str, int]:
+    """Return aggregate call counts: total, successful, and failed."""
+    conn = sqlite3.connect(db_path)
+    try:
+        row = conn.execute(
+            """\
+            SELECT
+                COUNT(*)                                          AS total,
+                SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) AS successful,
+                SUM(CASE WHEN outcome = 'failed'  THEN 1 ELSE 0 END) AS failed
+            FROM call_logs
+            """
+        ).fetchone()
+        total, successful, failed = row if row else (0, 0, 0)
+        return {
+            "total": int(total or 0),
+            "successful": int(successful or 0),
+            "failed": int(failed or 0),
+        }
+    finally:
+        conn.close()
+
+
+def list_recent_calls(
+    limit: int = 20, db_path: str = _DEFAULT_DB_PATH
+) -> list[dict[str, Any]]:
+    """Return the most recent call records (no PII — identity is an opaque token)."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """\
+            SELECT call_id, room_name, caller_type, outcome, tools_used,
+                   started_at, ended_at
+            FROM call_logs
+            ORDER BY ended_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        results = []
+        for r in rows:
+            rec = dict(r)
+            rec["tools_used"] = json.loads(rec["tools_used"])
+            results.append(rec)
+        return results
+    finally:
+        conn.close()
+
+
+def clear_call_logs(db_path: str = _DEFAULT_DB_PATH) -> int:
+    """Clear all call logs from the database. Return the number of deleted records."""
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.execute("DELETE FROM call_logs")
+        deleted_count = cursor.rowcount
+        conn.commit()
+        logger.info("Cleared %d call log records", deleted_count)
+        return deleted_count
+    finally:
+        conn.close()
 
 def _generate_escalation_id() -> str:
     """Generate a human-readable escalation reference ID like ESC-20260812-A3F7."""

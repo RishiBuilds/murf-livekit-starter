@@ -1,4 +1,4 @@
-import { Inter, Noto_Sans_Devanagari } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/app/theme-provider';
@@ -10,12 +10,6 @@ import '@/styles/globals.css';
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
-});
-
-const notoSansDevanagari = Noto_Sans_Devanagari({
-  variable: '--font-noto-devanagari',
-  subsets: ['devanagari'],
-  weight: ['400', '500', '600', '700'],
 });
 
 const commitMono = localFont({
@@ -61,7 +55,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       suppressHydrationWarning
       className={cn(
         inter.variable,
-        notoSansDevanagari.variable,
         commitMono.variable,
         'scroll-smooth font-sans antialiased'
       )}

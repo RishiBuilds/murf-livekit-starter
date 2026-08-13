@@ -16,12 +16,24 @@ const nextConfig: NextConfig = {
         destination: 'http://127.0.0.1:8000/',
       },
       {
+        source: '/analytics',
+        destination: 'http://127.0.0.1:8000/analytics',
+      },
+      {
         source: '/api/escalations',
         destination: 'http://127.0.0.1:8000/api/escalations',
       },
       {
         source: '/api/escalations/:path*',
         destination: 'http://127.0.0.1:8000/api/escalations/:path*',
+      },
+      {
+        source: '/api/call-stats',
+        destination: 'http://127.0.0.1:8000/api/call-stats',
+      },
+      {
+        source: '/api/recent-calls',
+        destination: 'http://127.0.0.1:8000/api/recent-calls',
       },
     ];
   },

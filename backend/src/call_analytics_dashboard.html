@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#101833" />
+  <title>DhanSathi · Call Analytics</title>
+  <meta name="description" content="Privacy-safe operational analytics for DhanSathi voice calls." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink:#17213d; --muted:#6e7891; --canvas:#f5f7fc; --card:#fff; --line:#e7eaf2; --indigo:#4457d9; --violet:#7557d9; --green:#168d68; --green-soft:#e4f7ef; --amber:#bd7514; --amber-soft:#fff4dc; --red:#c2414c; --red-soft:#fee9eb; --blue-soft:#eaf0ff; --shadow:0 18px 45px rgba(27,39,79,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:var(--canvas); color:var(--ink); font-family:Inter,'Noto Sans Devanagari',system-ui,sans-serif; }
+    button { font:inherit; }
+    .shell { max-width:1360px; margin:auto; padding:28px 24px 56px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:32px; }
+    .brand { display:flex; align-items:center; gap:13px; }
+    .mark { display:grid; place-items:center; width:46px; height:46px; color:#fff; border-radius:14px; background:linear-gradient(135deg,var(--indigo),var(--violet)); box-shadow:0 10px 20px rgba(68,87,217,.28); font-size:22px; }
+    .eyebrow { color:var(--indigo); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:3px 0 0; font-size:22px; letter-spacing:-.04em; }
+    .controls { display:flex; align-items:center; gap:10px; }
+    .live { display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid #b9ead7; border-radius:999px; color:var(--green); background:#f0fcf7; font-size:12px; font-weight:700; }
+    .live i { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 5px rgba(22,141,104,.12); animation:pulse 2s infinite; }
+    .refresh { border:1px solid var(--line); border-radius:10px; padding:9px 13px; color:var(--ink); background:#fff; cursor:pointer; font-size:12px; font-weight:700; }
+    .refresh:hover { border-color:#bfc8e1; background:#fbfcff; }
+    .refresh.danger { color:var(--red); border-color:#f7c5c8; background:var(--red-soft); }
+    .refresh.danger:hover { border-color:var(--red); background:#fcd8db; }
+    @keyframes pulse { 50% { transform:scale(.72); opacity:.65; } }
+    .hero { display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:20px; margin-bottom:20px; }
+    .hero-main { position:relative; overflow:hidden; padding:30px; border-radius:22px; color:#fff; background:linear-gradient(120deg,#202e79,#4b44a3 58%,#7654bc); box-shadow:0 20px 40px rgba(55,62,156,.2); }
+    .hero-main::after { content:''; position:absolute; right:-65px; bottom:-110px; width:280px; height:280px; border:45px solid rgba(255,255,255,.09); border-radius:50%; }
+    .hero h2 { position:relative; z-index:1; max-width:560px; margin:8px 0; font-size:27px; line-height:1.17; letter-spacing:-.045em; }
+    .hero p { position:relative; z-index:1; max-width:600px; margin:0; color:rgba(255,255,255,.78); font-size:13px; line-height:1.65; }
+    .freshness { position:relative; z-index:1; display:inline-flex; margin-top:20px; padding:8px 10px; border:1px solid rgba(255,255,255,.18); border-radius:99px; background:rgba(255,255,255,.1); font-size:11px; font-weight:600; }
+    .attention { padding:24px; border:1px solid #f2d9a7; border-radius:22px; background:linear-gradient(145deg,#fffaf0,#fff); box-shadow:var(--shadow); }
+    .attention h3 { margin:8px 0 7px; font-size:17px; letter-spacing:-.03em; }
+    .attention p { margin:0; color:var(--muted); font-size:12px; line-height:1.55; }
+    .attention-number { color:var(--amber); font-size:42px; font-weight:800; letter-spacing:-.07em; line-height:1; }
+    .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+    .metric { min-height:150px; padding:19px; border:1px solid var(--line); border-radius:18px; background:var(--card); box-shadow:0 8px 24px rgba(36,51,87,.035); }
+    .metric-top { display:flex; align-items:center; justify-content:space-between; color:var(--muted); font-size:12px; font-weight:700; }
+    .metric-icon { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; font-size:16px; }
+    .blue { background:var(--blue-soft); } .green { background:var(--green-soft); } .amber { background:var(--amber-soft); } .red { background:var(--red-soft); }
+    .metric-value { margin-top:20px; font-size:34px; font-weight:800; letter-spacing:-.06em; line-height:1; font-variant-numeric:tabular-nums; }
+    .metric-note { margin-top:9px; color:var(--muted); font-size:11px; }
+    .content-grid { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(270px,.55fr); gap:20px; }
+    .panel { border:1px solid var(--line); border-radius:20px; background:var(--card); box-shadow:var(--shadow); }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px 22px 14px; }
+    .panel-title { margin:0; font-size:15px; letter-spacing:-.02em; } .panel-caption { margin:4px 0 0; color:var(--muted); font-size:11px; }
+    .rate { display:flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:50%; background:conic-gradient(var(--green) calc(var(--rate) * 1%), #e7ecf5 0); }
+    .rate::before { content:attr(data-rate); display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:#fff; color:var(--ink); font-size:10px; font-weight:800; }
+    .bar-area { display:flex; align-items:end; gap:12px; height:170px; padding:8px 22px 23px; border-bottom:1px solid var(--line); }
+    .bar { position:relative; flex:1; min-width:18px; height:calc(var(--height) * 1%); min-height:3px; border-radius:7px 7px 3px 3px; background:linear-gradient(180deg,#6577eb,#4656d5); }
+    .bar::after { content:attr(data-day); position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); color:var(--muted); font-size:10px; }
+    .bar:hover { background:linear-gradient(180deg,#48b891,#188567); }
+    .chart-legend { display:flex; align-items:center; gap:7px; padding:13px 22px; color:var(--muted); font-size:11px; } .legend-dot { width:8px; height:8px; border-radius:50%; background:var(--indigo); }
+    .breakdown { padding:4px 22px 18px; } .breakdown-row { display:grid; grid-template-columns:1fr auto; gap:9px 12px; align-items:center; padding:14px 0; border-bottom:1px solid var(--line); font-size:12px; } .breakdown-row:last-child { border:0; }
+    .breakdown-label { display:flex; align-items:center; gap:9px; font-weight:700; } .swatch { width:10px; height:10px; border-radius:3px; } .barline { grid-column:1/-1; height:6px; overflow:hidden; border-radius:99px; background:#edf0f7; } .barline span { display:block; width:var(--width); height:100%; border-radius:inherit; background:var(--color); }
+    .calls { margin-top:20px; overflow:hidden; } .calls-toolbar { display:flex; justify-content:space-between; gap:16px; padding:17px 22px; border-bottom:1px solid var(--line); } .tabs { display:flex; gap:5px; padding:4px; border-radius:99px; background:#f1f3f8; } .tab { border:0; border-radius:6px; padding:6px 9px; color:var(--muted); background:transparent; cursor:pointer; font-size:11px; font-weight:700; } .tab.active { color:var(--indigo); background:#fff; box-shadow:0 1px 4px rgba(23,33,61,.1); }
+    .updated { align-self:center; color:var(--muted); font-size:11px; white-space:nowrap; }
+    .call-list { padding:4px 22px 12px; } .call { display:grid; grid-template-columns:92px 1fr auto; gap:16px; align-items:center; padding:16px 0; border-bottom:1px solid var(--line); } .call:last-child { border:0; } .time { color:var(--muted); font-size:11px; line-height:1.5; } .call-meta { display:flex; flex-wrap:wrap; align-items:center; gap:7px; } .call-title { margin:0 0 6px; font-size:12px; font-weight:800; } .pill { display:inline-flex; padding:4px 7px; border-radius:6px; font-size:10px; font-weight:800; } .pill.web { color:#435bb8; background:#eaf0ff; } .pill.sip { color:#7250be; background:#f0eaff; } .pill.success { color:var(--green); background:var(--green-soft); } .pill.failed { color:var(--red); background:var(--red-soft); } .tools { color:var(--muted); font-size:10px; } .duration { color:var(--ink); font-size:12px; font-weight:800; font-variant-numeric:tabular-nums; }
+    .empty { padding:42px 10px; color:var(--muted); text-align:center; font-size:13px; } .privacy { padding:16px 22px; border-top:1px solid var(--line); color:var(--muted); background:#fbfcff; font-size:11px; line-height:1.55; }
+    @media (max-width:900px) { .hero,.content-grid { grid-template-columns:1fr; } .metrics { grid-template-columns:repeat(2,1fr); } .attention { display:flex; gap:20px; align-items:center; } }
+    @media (max-width:600px) { .shell { padding:18px 14px 40px; } .topbar { align-items:flex-start; } .controls { flex-direction:column; align-items:flex-end; } .live { display:none; } .hero-main { padding:24px; } .hero h2 { font-size:23px; } .attention { display:block; } .metrics { gap:10px; } .metric { min-height:132px; padding:15px; } .metric-value { font-size:28px; } .call { grid-template-columns:1fr auto; gap:8px; } .time { grid-column:1/-1; grid-row:2; } .calls-toolbar { align-items:flex-start; flex-direction:column; } .updated { align-self:flex-start; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="mark">₹</div><div><div class="eyebrow">DhanSathi Operations</div><h1>Call analytics</h1></div></div>
+      <div class="controls">
+        <div class="live"><i></i>Live · refreshes every 10s</div>
+        <button class="refresh" onclick="fetchData()" aria-label="Refresh analytics">↻ Refresh</button>
+        <button class="refresh danger" onclick="clearCalls()" aria-label="Clear all call logs">🗑 Clear Calls</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-main"><div class="eyebrow" style="color:#cbd3ff">Voice support, made measurable</div><h2>See whether callers reached a useful next step.</h2><p>This privacy-safe view tracks outcomes, channels, and agent tools—not caller identities or conversation content.</p><div class="freshness" id="freshness">Fetching the latest call activity…</div></div>
+      <aside class="attention"><div class="eyebrow" style="color:var(--amber)">Needs attention</div><div class="attention-number" id="attention-number">0</div><h3>Calls ended before an objective</h3><p>Review failed calls for connection, flow, or language friction.</p></aside>
+    </section>
+
+    <section class="metrics" aria-label="Call outcome summary">
+      <article class="metric"><div class="metric-top"><span>Total calls</span><span class="metric-icon blue">☎</span></div><div class="metric-value" id="stat-total">—</div><div class="metric-note">All tracked conversations</div></article>
+      <article class="metric"><div class="metric-top"><span>Useful outcomes</span><span class="metric-icon green">✓</span></div><div class="metric-value" id="stat-success">—</div><div class="metric-note">Safety or eligibility guidance completed</div></article>
+      <article class="metric"><div class="metric-top"><span>Success rate</span><span class="metric-icon amber">↗</span></div><div class="metric-value" id="stat-rate">—</div><div class="metric-note">Useful outcomes ÷ all calls</div></article>
+      <article class="metric"><div class="metric-top"><span>Average duration</span><span class="metric-icon red">◷</span></div><div class="metric-value" id="stat-duration">—</div><div class="metric-note">Across recent calls</div></article>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel"><div class="panel-head"><div><h2 class="panel-title">Recent call activity</h2><p class="panel-caption">Volume by day from the most recent available calls</p></div><div class="rate" id="rate-ring" data-rate="—" style="--rate:0"></div></div><div class="bar-area" id="activity-bars"></div><div class="chart-legend"><span class="legend-dot"></span>Calls completed</div></article>
+      <aside class="panel"><div class="panel-head"><div><h2 class="panel-title">Call mix</h2><p class="panel-caption">Channel and outcome split</p></div></div><div class="breakdown" id="breakdown"></div></aside>
+    </section>
+
+    <section class="panel calls"><div class="calls-toolbar"><div><h2 class="panel-title">Recent calls</h2><p class="panel-caption">No names, phone numbers, or transcripts are shown.</p></div><div class="tabs" role="tablist"><button class="tab active" data-filter="all" onclick="setFilter('all',this)">All</button><button class="tab" data-filter="success" onclick="setFilter('success',this)">Useful</button><button class="tab" data-filter="failed" onclick="setFilter('failed',this)">Needs review</button></div><span class="updated" id="last-updated">Fetching…</span></div><div class="call-list" id="call-list"><div class="empty">Loading calls…</div></div><div class="privacy"><strong>Privacy note:</strong> “Useful outcome” means the agent completed an eligibility check or fraud safety action. This is operational telemetry only; it never displays caller identities, financial details, or conversation transcripts.</div></section>
+  </main>
+  <script>
+    let allCalls = [], currentFilter = 'all';
+    const esc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const pct = (part,total) => total ? Math.round((part / total) * 100) : 0;
+    function callDuration(call) { const seconds = Math.max(0, Math.round((new Date(call.ended_at) - new Date(call.started_at)) / 1000)); return Number.isFinite(seconds) ? seconds : 0; }
+    function timeLabel(date) { const value = new Date(date); if (Number.isNaN(value.getTime())) return 'Unknown time'; const today = new Date().toDateString() === value.toDateString(); return `${today ? 'Today' : value.toLocaleDateString([], {month:'short',day:'numeric'})} · ${value.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`; }
+    function displayDuration(seconds) { const m = Math.floor(seconds/60), s = seconds%60; return m ? `${m}m ${s}s` : `${s}s`; }
+    function setText(id, value) { document.getElementById(id).textContent = value; }
+    function updateMetrics(stats, calls) { const total = stats.total || 0, success = stats.successful || 0, failed = stats.failed || 0, successRate = pct(success,total); const avg = calls.length ? Math.round(calls.reduce((sum,c)=>sum+callDuration(c),0)/calls.length) : 0; setText('stat-total',total); setText('stat-success',success); setText('stat-rate',`${successRate}%`); setText('stat-duration',calls.length ? displayDuration(avg) : '—'); setText('attention-number',failed); const ring=document.getElementById('rate-ring'); ring.style.setProperty('--rate',successRate); ring.dataset.rate=`${successRate}%`; }
+    function renderBars(calls) { const grouped = new Map(); calls.forEach(c => { const key = new Date(c.ended_at).toLocaleDateString([], {weekday:'short'}); grouped.set(key,(grouped.get(key)||0)+1); }); const fallback=['Mon','Tue','Wed','Thu','Fri','Sat','Sun']; const data = grouped.size ? [...grouped.entries()].slice(-7) : fallback.map(day=>[day,0]); const max=Math.max(1,...data.map(([,count])=>count)); document.getElementById('activity-bars').innerHTML=data.map(([day,count])=>`<div class="bar" style="--height:${Math.max(3,Math.round(count/max*100))}" data-day="${esc(day)}" title="${count} calls"></div>`).join(''); }
+    function breakdownRow(label,count,total,color) { return `<div class="breakdown-row"><div class="breakdown-label"><span class="swatch" style="background:${color}"></span>${label}</div><strong>${count}</strong><div class="barline"><span style="--width:${pct(count,total)}%;--color:${color}"></span></div></div>`; }
+    function renderBreakdown(calls) { const total=calls.length, web=calls.filter(c=>c.caller_type==='web').length, sip=calls.filter(c=>c.caller_type==='sip').length, useful=calls.filter(c=>c.outcome==='success').length; document.getElementById('breakdown').innerHTML=breakdownRow('Web calls',web,total,'#4457d9')+breakdownRow('SIP calls',sip,total,'#7557d9')+breakdownRow('Useful outcomes',useful,total,'#168d68'); }
+    function renderCalls() { const calls=currentFilter==='all' ? allCalls : allCalls.filter(c=>c.outcome===currentFilter); const target=document.getElementById('call-list'); if(!calls.length){target.innerHTML=`<div class="empty">${allCalls.length ? 'No calls match this view.' : 'No calls recorded yet. Start a browser or SIP call to see operational activity here.'}</div>`;return;} target.innerHTML=calls.map(c=>{const successful=c.outcome==='success', tools=(c.tools_used||[]).map(esc).join(' · ')||'No completed tools'; return `<article class="call"><div class="time">${esc(timeLabel(c.ended_at))}</div><div><p class="call-title">${successful?'Useful outcome recorded':'Call needs review'}</p><div class="call-meta"><span class="pill ${c.caller_type==='sip'?'sip':'web'}">${c.caller_type==='sip'?'SIP':'Web'}</span><span class="pill ${successful?'success':'failed'}">${successful?'Completed':'Incomplete'}</span><span class="tools">${tools}</span></div></div><div class="duration">${displayDuration(callDuration(c))}</div></article>`;}).join(''); }
+    function setFilter(filter, button) { currentFilter=filter; document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab===button)); renderCalls(); }
+    async function clearCalls() { if (!confirm('Are you sure you want to clear all call logs?')) return; try { const res = await fetch('/api/call-logs', { method: 'DELETE' }); if (res.ok) { fetchData(); } else { alert('Failed to clear call logs.'); } } catch(error) { console.error(error); alert('Error clearing call logs.'); } }
+    async function fetchData() { try { const [statsResponse,callsResponse]=await Promise.all([fetch('/api/call-stats'),fetch('/api/recent-calls?limit=100')]); if(!statsResponse.ok||!callsResponse.ok) throw new Error('Analytics API unavailable'); const stats=await statsResponse.json(); allCalls=await callsResponse.json(); updateMetrics(stats,allCalls); renderBars(allCalls); renderBreakdown(allCalls); renderCalls(); const now=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); setText('last-updated',`Updated ${now}`); setText('freshness',`Live operational snapshot · updated ${now}`); } catch(error) { console.error(error); setText('last-updated','Connection issue · retrying…'); setText('freshness','Unable to reach analytics · retrying automatically'); } }
+    fetchData(); setInterval(fetchData,10000);
+  </script>
+</body>
+</html>

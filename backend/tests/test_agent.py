@@ -148,6 +148,24 @@ async def test_create_escalation_tool_success() -> None:
 
 
 @pytest.mark.asyncio
+async def test_fraud_safety_tool_returns_urgent_interrupt() -> None:
+    """The agent tool must give an immediate, non-data-collecting scam warning."""
+    assistant = Assistant()
+
+    class MockContext:
+        pass
+
+    result = await assistant.fraud_safety_check(
+        context=MockContext(),
+        caller_message="Someone asked me to share my OTP for a refund.",
+    )
+
+    assert "URGENT SAFETY INTERRUPT" in result
+    assert "1930" in result
+    assert "Do not ask for, repeat, or save" in result
+
+
+@pytest.mark.asyncio
 async def test_create_escalation_tool_denied_consent() -> None:
     """Test Assistant.create_escalation tool when caller denies consent (Step 4)."""
     assistant = Assistant()

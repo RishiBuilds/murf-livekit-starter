@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import threading
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -26,6 +27,7 @@ from db import (
     get_user,
     init_db,
     normalize_user_id,
+    save_call_log,
     save_user_memory,
 )
 from escalation_api import run_server
@@ -34,6 +36,7 @@ from scheme_checker import (
     format_eligibility_response_for_llm,
     query_scheme_eligibility_async,
 )
+from safety import classify_safety_risk
 
 logger = logging.getLogger("agent")
 
@@ -77,8 +80,13 @@ ensure_escalation_api_started()
 
 
 class Assistant(Agent):
+    SUCCESS_TOOLS: frozenset[str] = frozenset(
+        {"check_scheme_eligibility", "fraud_safety_check"}
+    )
+
     def __init__(self) -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
+        self._tools_used: set[str] = set()
 
     @llm.function_tool
     async def lookup_caller(
@@ -95,6 +103,7 @@ class Assistant(Agent):
         Args:
             user_id_or_name: The caller's name or their user ID.
         """
+        self._tools_used.add("lookup_caller")
         logger.info("Looking up caller: %s", user_id_or_name)
 
         record = await asyncio.to_thread(get_user, normalize_user_id(user_id_or_name))
@@ -110,6 +119,39 @@ class Assistant(Agent):
             f"Last interaction: {record['last_interaction']}. "
             f"Known facts: {facts_summary or 'none'}. "
             f"Language preference: {record['language_preference']}."
+        )
+
+    @llm.function_tool
+    async def fraud_safety_check(
+        self,
+        context: RunContext,
+        caller_message: str,
+    ):
+        """Check a caller's description for immediate fraud danger.
+
+        Use this before answering whenever the caller says somebody asked for an
+        OTP, PIN, CVV, password, Aadhaar number, a screen-share app, remote
+        access, or reports money being taken. This tool never stores the caller
+        message. Do not use it for a general question such as "what is UPI?".
+
+        Args:
+            caller_message: A short paraphrase of the caller's fraud concern.
+                Never include actual account numbers, OTPs, PINs, or passwords.
+        """
+        self._tools_used.add("fraud_safety_check")
+        risk = classify_safety_risk(caller_message)
+        if not risk.is_active_fraud:
+            return (
+                "No immediate fraud signal detected. Continue with normal financial "
+                "literacy guidance and never request sensitive information."
+            )
+
+        return (
+            "URGENT SAFETY INTERRUPT: Say this first, in the caller's language: "
+            f'"{risk.warning}" '
+            "Do not ask for, repeat, or save any sensitive details. Encourage the "
+            "caller to stop the suspicious interaction. If money has moved or is at "
+            "risk, tell them to call 1930 and report at cybercrime.gov.in immediately."
         )
 
     @llm.function_tool
@@ -144,6 +186,7 @@ have their information remembered.
             user_id: Optional explicit user ID. If empty, one will be \
 generated from the caller's name.
         """
+        self._tools_used.add("save_caller_info")
         if not consent_given:
             logger.info("Consent not given by %s — skipping save.", name)
             return (
@@ -192,6 +235,7 @@ generated from the caller's name.
         is_taxpayer: bool = False,
         gender: str = "",
         state: str = "",
+        has_cultivable_land: bool | None = None,
     ):
         """Check a caller's eligibility for Indian government financial schemes based on collected profile details.
 
@@ -215,7 +259,10 @@ generated from the caller's name.
             is_taxpayer: True if the caller pays income tax; False otherwise.
             gender: Caller's gender ('male', 'female', or 'other').
             state: Caller's Indian state or UT (e.g. 'Maharashtra', 'Uttar Pradesh').
+            has_cultivable_land: For PM-KISAN, whether the caller owns cultivable
+                land. Leave unknown when the caller has not answered yet.
         """
+        self._tools_used.add("check_scheme_eligibility")
         logger.info(
             "Checking scheme eligibility for scheme='%s', occupation='%s', age=%d, income=%f",
             scheme_name,
@@ -234,6 +281,7 @@ generated from the caller's name.
                 is_taxpayer=is_taxpayer,
                 gender=gender,
                 state=state,
+                has_land=has_cultivable_land,
                 timeout_seconds=3.0,
             )
             return format_eligibility_response_for_llm(result)
@@ -311,6 +359,7 @@ generated from the caller's name.
             consent_given: True only if the caller explicitly agreed to
                 have their information shared with a human agent.
         """
+        self._tools_used.add("create_escalation")
         if not consent_given:
             logger.info(
                 "Escalation consent not given by %s — skipping.", caller_name
@@ -374,10 +423,11 @@ async def my_agent(ctx: JobContext):
         "room": ctx.room.name,
     }
 
-    # 1. Connect to LiveKit room FIRST
+    call_started_at = datetime.now(timezone.utc).isoformat()
+    call_id = ctx.room.name
+    assistant: Assistant | None = None
     await ctx.connect()
 
-    # 2. Initialize and start AgentSession on connected room
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=google.LLM(
@@ -394,8 +444,9 @@ async def my_agent(ctx: JobContext):
         preemptive_generation=True,
     )
 
+    assistant = Assistant()
     await session.start(
-        agent=Assistant(),
+        agent=assistant,
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
@@ -409,7 +460,6 @@ async def my_agent(ctx: JobContext):
         ),
     )
 
-    # 3. Wait for remote caller participant to join (timeout after 15s)
     logger.info(
         "Agent connected to room '%s'. Waiting for caller to join...", ctx.room.name
     )
@@ -430,8 +480,10 @@ async def my_agent(ctx: JobContext):
         participant.kind,
     )
 
+    caller_type_str = "web"
+
     greeting_done = False
-    _bg_tasks = set()
+    _bg_tasks: set = set()
 
     async def trigger_outbound_greeting(p: rtc.RemoteParticipant):
         nonlocal greeting_done
@@ -455,8 +507,40 @@ async def my_agent(ctx: JobContext):
         )
         await session.generate_reply(instructions=instruction)
 
+    def _log_call(p: rtc.RemoteParticipant | None = None) -> None:
+        """Write call log when participant disconnects or session ends."""
+        nonlocal caller_type_str
+        if assistant is None:
+            return
+        tools = list(assistant._tools_used)
+        outcome = "success" if assistant._tools_used & Assistant.SUCCESS_TOOLS else "failed"
+        identity = p.identity if p is not None else ""
+        asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: save_call_log(
+                call_id=call_id,
+                room_name=ctx.room.name,
+                caller_identity=identity,
+                caller_type=caller_type_str,
+                outcome=outcome,
+                tools_used=tools,
+                started_at=call_started_at,
+            ),
+        )
+        logger.info(
+            "Call ended — room=%s outcome=%s tools=%s",
+            ctx.room.name,
+            outcome,
+            tools,
+        )
+
+    @ctx.room.on("participant_disconnected")
+    def on_participant_disconnected(p: rtc.RemoteParticipant):
+        _log_call(p)
+
     # For SIP calls, trigger greeting when audio track is subscribed or after brief pause
     if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
+        caller_type_str = "sip"
         logger.info(
             "SIP caller detected. Listening for audio track subscription / pickup..."
         )
@@ -481,7 +565,9 @@ async def my_agent(ctx: JobContext):
             if not greeting_done:
                 await trigger_outbound_greeting(participant)
     else:
+        caller_type_str = "web"
         await trigger_outbound_greeting(participant)
+
 
 
 if __name__ == "__main__":

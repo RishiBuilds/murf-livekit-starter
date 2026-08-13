@@ -1,15 +1,15 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Track } from 'livekit-client';
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
 import {
   type TrackReference,
   VideoTrack,
-  useLocalParticipant,
   useAgent,
+  useLocalParticipant,
+  useMultibandTrackVolume,
+  useTrackVolume,
   useTracks,
   useVoiceAssistant,
-  useTrackVolume,
-  useMultibandTrackVolume,
 } from '@livekit/components-react';
 import { cn } from '@/lib/shadcn/utils';
 import { AudioVisualizer } from './audio-visualizer';
@@ -36,10 +36,13 @@ function DhanSathiAvatar({ state }: { state: string }) {
   // Natural blinking effect (blinks every ~3.5s for 140ms)
   const [isBlinking, setIsBlinking] = useState(false);
   useEffect(() => {
-    const blinkTimer = setInterval(() => {
-      setIsBlinking(true);
-      setTimeout(() => setIsBlinking(false), 140);
-    }, 3200 + Math.random() * 1500);
+    const blinkTimer = setInterval(
+      () => {
+        setIsBlinking(true);
+        setTimeout(() => setIsBlinking(false), 140);
+      },
+      3200 + Math.random() * 1500
+    );
 
     return () => clearInterval(blinkTimer);
   }, []);
@@ -60,6 +63,9 @@ function DhanSathiAvatar({ state }: { state: string }) {
       aria-label="DhanSathi voice assistant avatar"
       role="img"
     >
+      <span className="dhan-avatar-orbit dhan-avatar-orbit-one" aria-hidden="true" />
+      <span className="dhan-avatar-orbit dhan-avatar-orbit-two" aria-hidden="true" />
+      <span className="dhan-avatar-orbit dhan-avatar-orbit-three" aria-hidden="true" />
       {/* Audio-reactive Halo Glow */}
       <span
         className="dhan-avatar-halo"
@@ -124,21 +130,46 @@ function DhanSathiAvatar({ state }: { state: string }) {
               <stop offset="100%" stopColor="#141211" />
             </linearGradient>
             <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#f5a623" floodOpacity="0.7" />
+              <feDropShadow
+                dx="0"
+                dy="1"
+                stdDeviation="1.5"
+                floodColor="#f5a623"
+                floodOpacity="0.7"
+              />
             </filter>
           </defs>
 
           {/* Scarf / Dupatta */}
-          <path className="dhan-avatar-scarf" fill="url(#scarfGrad)" d="M30 152c5-34 22-48 50-48s45 14 50 48H30Z" />
+          <path
+            className="dhan-avatar-scarf"
+            fill="url(#scarfGrad)"
+            d="M30 152c5-34 22-48 50-48s45 14 50 48H30Z"
+          />
 
           {/* Back Hair */}
-          <path className="dhan-avatar-hair" fill="url(#hairGrad)" d="M44 73c0-33 16-52 36-52 24 0 40 19 36 55l-11 12-57-1-4-14Z" />
+          <path
+            className="dhan-avatar-hair"
+            fill="url(#hairGrad)"
+            d="M44 73c0-33 16-52 36-52 24 0 40 19 36 55l-11 12-57-1-4-14Z"
+          />
 
           {/* Face Base */}
-          <ellipse className="dhan-avatar-face" fill="url(#faceGrad)" cx="80" cy="76" rx="29" ry="35" />
+          <ellipse
+            className="dhan-avatar-face"
+            fill="url(#faceGrad)"
+            cx="80"
+            cy="76"
+            rx="29"
+            ry="35"
+          />
 
           {/* Front Hair Style */}
-          <path className="dhan-avatar-hair" fill="url(#hairGrad)" d="M48 64c3-29 19-42 35-42 17 0 31 12 35 32-9-7-20-12-34-12-15 0-27 8-36 22Z" />
+          <path
+            className="dhan-avatar-hair"
+            fill="url(#hairGrad)"
+            d="M48 64c3-29 19-42 35-42 17 0 31 12 35 32-9-7-20-12-34-12-15 0-27 8-36 22Z"
+          />
 
           {/* Gold Jhumka Earrings */}
           <circle cx="48" cy="82" r="3" fill="#f5a623" filter="url(#goldGlow)" />
@@ -149,7 +180,13 @@ function DhanSathiAvatar({ state }: { state: string }) {
           {/* Eyebrows (react to agent state) */}
           <path
             className="dhan-avatar-eyebrow"
-            d={isListening ? "M 61 67 Q 69 63 77 67" : isThinking ? "M 61 65 Q 69 67 77 64" : "M 61 66 Q 69 63 77 66"}
+            d={
+              isListening
+                ? 'M 61 67 Q 69 63 77 67'
+                : isThinking
+                  ? 'M 61 65 Q 69 67 77 64'
+                  : 'M 61 66 Q 69 63 77 66'
+            }
             stroke="#2b2826"
             strokeWidth="2.2"
             strokeLinecap="round"
@@ -157,7 +194,13 @@ function DhanSathiAvatar({ state }: { state: string }) {
           />
           <path
             className="dhan-avatar-eyebrow"
-            d={isListening ? "M 83 67 Q 91 63 99 67" : isThinking ? "M 83 63 Q 91 66 99 65" : "M 83 66 Q 91 63 99 66"}
+            d={
+              isListening
+                ? 'M 83 67 Q 91 63 99 67'
+                : isThinking
+                  ? 'M 83 63 Q 91 66 99 65'
+                  : 'M 83 66 Q 91 63 99 66'
+            }
             stroke="#2b2826"
             strokeWidth="2.2"
             strokeLinecap="round"
@@ -165,21 +208,50 @@ function DhanSathiAvatar({ state }: { state: string }) {
           />
 
           {/* Eyes with Natural Blinking */}
-          <g transform={isBlinking ? "scale(1, 0.1)" : "scale(1, 1)"} style={{ transformOrigin: '80px 74px' }}>
+          <g
+            transform={isBlinking ? 'scale(1, 0.1)' : 'scale(1, 1)'}
+            style={{ transformOrigin: '80px 74px' }}
+          >
             <ellipse cx="69" cy="74" rx="3.5" ry="4" fill="#ffffff" />
-            <circle cx={isThinking ? 70.5 : 69} cy={isThinking ? 72.5 : 74} r="2.4" fill="#1e1b18" />
-            <circle cx={isThinking ? 71.3 : 70} cy={isThinking ? 71.7 : 73} r="0.8" fill="#ffffff" />
+            <circle
+              cx={isThinking ? 70.5 : 69}
+              cy={isThinking ? 72.5 : 74}
+              r="2.4"
+              fill="#1e1b18"
+            />
+            <circle
+              cx={isThinking ? 71.3 : 70}
+              cy={isThinking ? 71.7 : 73}
+              r="0.8"
+              fill="#ffffff"
+            />
 
             <ellipse cx="91" cy="74" rx="3.5" ry="4" fill="#ffffff" />
-            <circle cx={isThinking ? 92.5 : 91} cy={isThinking ? 72.5 : 74} r="2.4" fill="#1e1b18" />
-            <circle cx={isThinking ? 93.3 : 92} cy={isThinking ? 71.7 : 73} r="0.8" fill="#ffffff" />
+            <circle
+              cx={isThinking ? 92.5 : 91}
+              cy={isThinking ? 72.5 : 74}
+              r="2.4"
+              fill="#1e1b18"
+            />
+            <circle
+              cx={isThinking ? 93.3 : 92}
+              cy={isThinking ? 71.7 : 73}
+              r="0.8"
+              fill="#ffffff"
+            />
           </g>
 
           {/* Traditional Crimson Bindi */}
           <circle className="dhan-avatar-bindi" cx="80" cy="60" r="2" fill="#d92d20" />
 
           {/* Nose Accent */}
-          <path d="M 79 74 Q 81 79 78 81" stroke="#d49466" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+          <path
+            d="M 79 74 Q 81 79 78 81"
+            stroke="#d49466"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+          />
 
           {/* Dynamic Audio-Reactive Mouth */}
           {isSpeaking && mouthOpen > 3 ? (
@@ -237,29 +309,36 @@ function DhanSathiAvatar({ state }: { state: string }) {
       </div>
 
       {/* Avatar Name Tag */}
-      <span className="dhan-avatar-name flex items-center gap-1.5">
-        DhanSathi
-      </span>
+      <span className="dhan-avatar-name flex items-center gap-1.5">DhanSathi</span>
 
       {/* Avatar Status Badge with Live Waveform */}
       <span className="dhan-avatar-status flex items-center gap-1.5">
         {isSpeaking ? (
           <>
-            <span className="flex items-end gap-0.5 h-3">
-              <span className="w-0.5 bg-primary rounded-full animate-wave-speaking" style={{ height: '80%' }} />
-              <span className="w-0.5 bg-primary rounded-full animate-wave-speaking" style={{ height: '100%', animationDelay: '0.2s' }} />
-              <span className="w-0.5 bg-primary rounded-full animate-wave-speaking" style={{ height: '60%', animationDelay: '0.4s' }} />
+            <span className="flex h-3 items-end gap-0.5">
+              <span
+                className="bg-primary animate-wave-speaking w-0.5 rounded-full"
+                style={{ height: '80%' }}
+              />
+              <span
+                className="bg-primary animate-wave-speaking w-0.5 rounded-full"
+                style={{ height: '100%', animationDelay: '0.2s' }}
+              />
+              <span
+                className="bg-primary animate-wave-speaking w-0.5 rounded-full"
+                style={{ height: '60%', animationDelay: '0.4s' }}
+              />
             </span>
             <span>Speaking...</span>
           </>
         ) : isListening ? (
           <>
-            <span className="size-1.5 bg-success rounded-full animate-ping" />
+            <span className="bg-success size-1.5 animate-ping rounded-full" />
             <span>Listening to you</span>
           </>
         ) : isThinking ? (
           <>
-            <span className="size-1.5 bg-primary rounded-full animate-pulse" />
+            <span className="bg-primary size-1.5 animate-pulse rounded-full" />
             <span>Thinking...</span>
           </>
         ) : (
@@ -383,7 +462,7 @@ export function TileLayout({
                     ...ANIMATION_TRANSITION,
                     delay: animationDelay,
                   }}
-                  className={cn('relative aspect-square h-[176px] sm:h-[204px]')}
+                  className={cn('relative aspect-square h-[214px] sm:h-[250px]')}
                 >
                   <AudioVisualizer
                     key="audio-visualizer"
@@ -405,7 +484,7 @@ export function TileLayout({
                     isChatOpen={chatOpen}
                     className={cn(
                       'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-                      'bg-background rounded-[50px] border border-transparent opacity-60 transition-[border,drop-shadow]',
+                      'bg-background/30 rounded-[50px] border border-transparent opacity-80 transition-[border,drop-shadow]',
                       chatOpen && 'border-input shadow-2xl/10 delay-200'
                     )}
                     style={{ color: audioVisualizerColor }}

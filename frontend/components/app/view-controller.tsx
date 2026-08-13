@@ -1,18 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ConnectionQuality } from 'livekit-client';
 import { useTheme } from 'next-themes';
+import { ConnectionQuality } from 'livekit-client';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   useAgent,
   useLocalParticipant,
   useSessionContext,
+  useSessionMessages,
 } from '@livekit/components-react';
 import type { AppConfig } from '@/app-config';
 import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
 import { WelcomeView } from '@/components/app/welcome-view';
 import { Button } from '@/components/ui/button';
+import { type CallRecap, createCallRecap } from '@/lib/call-recap';
 
 const MotionWelcomeView = motion.create(WelcomeView);
 const MotionSessionView = motion.create(AgentSessionView_01);
@@ -43,19 +45,15 @@ function ConnectingView({ isNetworkSlow }: { isNetworkSlow: boolean }) {
     <motion.div
       key="connecting"
       {...VIEW_MOTION_PROPS}
-      className="bg-background flex h-svh flex-col items-center justify-center px-6 text-center"
+      className="bg-background flex min-h-svh flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center"
     >
       {/* Spinner */}
       <div className="mb-6">
         <div className="border-primary/20 border-t-primary mx-auto size-12 animate-spin rounded-full border-4" />
       </div>
 
-      <p className="text-foreground text-base font-semibold">
-        DhanSathi से जुड़ रहे हैं…
-      </p>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Connecting to DhanSathi…
-      </p>
+      <p className="text-foreground text-base font-semibold">DhanSathi से जुड़ रहे हैं…</p>
+      <p className="text-muted-foreground mt-1 text-sm">Connecting to DhanSathi…</p>
 
       {/* Network slow warning */}
       {isNetworkSlow && (
@@ -79,12 +77,22 @@ function ConnectingView({ isNetworkSlow }: { isNetworkSlow: boolean }) {
 /**
  * Call ended view shown after disconnect with follow-up actions.
  */
-function CallEndedView({ onStartAgain }: { onStartAgain: () => void }) {
+function CallEndedView({ recap, onStartAgain }: { recap: CallRecap; onStartAgain: () => void }) {
+  const listenToRecap = () => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(
+      `${recap.topic}. ${recap.outcome} ${recap.nextStep}`
+    );
+    utterance.lang = 'en-IN';
+    window.speechSynthesis.speak(utterance);
+  };
+
   return (
     <motion.div
       key="call-ended"
       {...VIEW_MOTION_PROPS}
-      className="bg-background flex h-svh flex-col items-center justify-center px-6 text-center"
+      className="bg-background flex min-h-svh flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center"
     >
       {/* Checkmark icon */}
       <div className="bg-success/10 mb-6 flex size-16 items-center justify-center rounded-full">
@@ -103,12 +111,8 @@ function CallEndedView({ onStartAgain }: { onStartAgain: () => void }) {
         </svg>
       </div>
 
-      <h2 className="text-foreground text-lg font-bold md:text-xl">
-        बातचीत समाप्त हुई
-      </h2>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Conversation ended
-      </p>
+      <h2 className="text-foreground text-lg font-bold md:text-xl">बातचीत समाप्त हुई</h2>
+      <p className="text-muted-foreground mt-1 text-sm">Conversation ended</p>
 
       <p className="text-muted-foreground mt-4 max-w-sm text-xs leading-5 md:text-sm">
         DhanSathi से बात करने के लिए धन्यवाद। क्या आप कुछ और जानना चाहते हैं?
@@ -117,6 +121,21 @@ function CallEndedView({ onStartAgain }: { onStartAgain: () => void }) {
           Thanks for talking to DhanSathi. Would you like to know more?
         </span>
       </p>
+
+      <section className="border-border bg-card mt-5 w-full max-w-sm rounded-2xl border p-4 text-left shadow-sm">
+        <p className="text-success text-xs font-extrabold tracking-wide uppercase">
+          Aaj ka saar · Call recap
+        </p>
+        <p className="mt-2 text-sm font-bold">{recap.topic}</p>
+        <p className="text-muted-foreground mt-1 text-xs leading-5">{recap.outcome}</p>
+        <div className="border-primary/20 bg-primary/8 mt-3 rounded-xl border px-3 py-2.5">
+          <p className="text-xs font-bold">Agla kadam · Next step</p>
+          <p className="text-muted-foreground mt-1 text-xs leading-5">{recap.nextStep}</p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={listenToRecap} className="mt-2 -ml-2 text-xs">
+          Listen to recap
+        </Button>
+      </section>
 
       {/* Follow-up actions */}
       <div className="mt-6 flex flex-col gap-3">
@@ -148,15 +167,24 @@ interface ViewControllerProps {
 }
 
 export function ViewController({ appConfig }: ViewControllerProps) {
-  const { isConnected, start, end } = useSessionContext();
+  const session = useSessionContext();
+  const { isConnected, start, end } = session;
   const agent = useAgent();
   const { resolvedTheme } = useTheme();
   const { localParticipant } = useLocalParticipant();
+  const { messages } = useSessionMessages(session);
 
   // Track if we've ever been connected to distinguish "not started yet" from "call ended"
   const hasBeenConnectedRef = useRef(false);
   const [hasEnded, setHasEnded] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const recapRef = useRef<CallRecap>(createCallRecap([]));
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      recapRef.current = createCallRecap(messages);
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (isConnected) {
@@ -181,7 +209,12 @@ export function ViewController({ appConfig }: ViewControllerProps) {
     uiState = isStarting ? 'connecting' : 'ready';
   } else if (isConnected) {
     // Agent is in-call: listening, thinking, or speaking
-    if (agent.state === 'connecting' || agent.state === 'pre-connect-buffering' || agent.state === 'initializing' || agent.state === 'idle') {
+    if (
+      agent.state === 'connecting' ||
+      agent.state === 'pre-connect-buffering' ||
+      agent.state === 'initializing' ||
+      agent.state === 'idle'
+    ) {
       uiState = 'connecting';
     } else {
       uiState = 'in-call';
@@ -190,12 +223,15 @@ export function ViewController({ appConfig }: ViewControllerProps) {
     uiState = 'ready';
   }
 
-  const isNetworkSlow = localParticipant.connectionQuality === ConnectionQuality.Poor || localParticipant.connectionQuality === ConnectionQuality.Lost;
+  const isNetworkSlow =
+    localParticipant.connectionQuality === ConnectionQuality.Poor ||
+    localParticipant.connectionQuality === ConnectionQuality.Lost;
 
   const handleStartAgain = useCallback(() => {
     hasBeenConnectedRef.current = false;
     setHasEnded(false);
     setIsStarting(true);
+    recapRef.current = createCallRecap([]);
     void Promise.resolve(start()).catch(() => setIsStarting(false));
   }, [start]);
 
@@ -222,10 +258,7 @@ export function ViewController({ appConfig }: ViewControllerProps) {
 
       {/* Connecting state */}
       {uiState === 'connecting' && (
-        <ConnectingView
-          key="connecting"
-          isNetworkSlow={isNetworkSlow}
-        />
+        <ConnectingView key="connecting" isNetworkSlow={isNetworkSlow} />
       )}
 
       {/* In-call state: Session view */}
@@ -256,10 +289,7 @@ export function ViewController({ appConfig }: ViewControllerProps) {
 
       {/* Call ended state */}
       {uiState === 'call-ended' && (
-        <CallEndedView
-          key="call-ended"
-          onStartAgain={handleStartAgain}
-        />
+        <CallEndedView key="call-ended" recap={recapRef.current} onStartAgain={handleStartAgain} />
       )}
     </AnimatePresence>
   );

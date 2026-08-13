@@ -108,7 +108,11 @@ function SpeakingIndicator() {
 /**
  * Visual indicator for the variant
  */
-function StateVisual({ variant }: { variant: 'connecting' | 'listening' | 'thinking' | 'speaking' }) {
+function StateVisual({
+  variant,
+}: {
+  variant: 'connecting' | 'listening' | 'thinking' | 'speaking';
+}) {
   switch (variant) {
     case 'connecting':
       return <ConnectingIndicator />;
@@ -141,23 +145,20 @@ export function AgentStateIndicator({ className }: AgentStateIndicatorProps) {
   if (!config) return null;
 
   // Get the latest transcription text for the captions strip
-  const latestTranscription = agentTranscriptions.length > 0
-    ? agentTranscriptions[agentTranscriptions.length - 1]
-    : null;
+  const latestTranscription =
+    agentTranscriptions.length > 0 ? agentTranscriptions[agentTranscriptions.length - 1] : null;
 
   return (
     <div className={cn('flex flex-col items-center gap-3', className)}>
       {/* State badge */}
       <div className="state-badge">
         <StateVisual variant={config.variant} />
-        <span className="text-foreground/80 text-xs font-medium md:text-sm">
-          {config.label}
-        </span>
+        <span className="text-foreground/80 text-xs font-medium md:text-sm">{config.label}</span>
       </div>
 
       {/* Live captions strip, visible when agent is speaking or thinking */}
       {latestTranscription && (config.variant === 'speaking' || config.variant === 'thinking') && (
-        <div className="bg-background/60 border-border/30 mx-auto max-w-md rounded-lg border px-4 py-2 text-center backdrop-blur-sm">
+        <div className="dhan-live-caption mx-auto max-w-md px-4 py-2 text-center">
           <p className="text-foreground/70 text-xs leading-relaxed md:text-sm">
             {latestTranscription.text}
           </p>

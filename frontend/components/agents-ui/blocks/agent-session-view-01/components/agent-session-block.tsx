@@ -9,8 +9,9 @@ import {
   AgentControlBar,
   type AgentControlBarControls,
 } from '@/components/agents-ui/agent-control-bar';
-import { AgentStateIndicator } from '@/components/app/agent-state-indicator';
 import { Shimmer } from '@/components/ai-elements/shimmer';
+import { AgentStateIndicator } from '@/components/app/agent-state-indicator';
+import { SafetyNudge } from '@/components/app/safety-nudge';
 import { cn } from '@/lib/shadcn/utils';
 import { TileLayout } from './tile-view';
 
@@ -203,15 +204,19 @@ export function AgentSessionView_01({
   return (
     <section
       ref={ref}
-      className={cn('bg-background relative z-10 h-full w-full overflow-hidden', className)}
+      className={cn('dhan-call-surface relative z-10 h-full w-full overflow-hidden', className)}
       {...props}
     >
+      <div className="dhan-call-ambient dhan-call-ambient-one" aria-hidden="true" />
+      <div className="dhan-call-ambient dhan-call-ambient-two" aria-hidden="true" />
+      <div className="dhan-call-grain" aria-hidden="true" />
       <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
 
       {/* Agent state indicator with listening, thinking, speaking badge and captions */}
       <div className="absolute inset-x-0 top-6 z-20 flex justify-center md:top-10">
         <AgentStateIndicator />
       </div>
+      <SafetyNudge />
 
       {/* transcript */}
 
@@ -258,17 +263,18 @@ export function AgentSessionView_01({
                 duration={2}
                 aria-hidden={messages.length > 0}
                 {...SHIMMER_MOTION_PROPS}
-                className="pointer-events-none mx-auto block w-full max-w-2xl pb-4 text-center text-sm font-semibold"
+                className="dhan-conversation-prompt pointer-events-none mx-auto block w-full max-w-sm pb-4 text-center text-sm font-semibold"
               >
                 {preConnectMessage}
               </MotionMessage>
             )}
           </AnimatePresence>
         )}
-        <div className="bg-background relative mx-auto max-w-2xl pb-3 md:pb-12">
+        <div className="relative mx-auto max-w-2xl pb-3 md:pb-12">
           <Fade bottom className="absolute inset-x-0 top-0 h-4 -translate-y-full" />
           <AgentControlBar
             variant="livekit"
+            className="dhan-control-dock"
             controls={controls}
             isChatOpen={chatOpen}
             isConnected={session.isConnected}

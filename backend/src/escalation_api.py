@@ -12,9 +12,12 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from db import (
+    clear_call_logs,
+    get_call_stats,
     get_escalation,
     init_db,
     list_escalations,
+    list_recent_calls,
     update_escalation_status,
 )
 
@@ -22,6 +25,7 @@ logger = logging.getLogger("escalation_api")
 logging.basicConfig(level=logging.INFO)
 
 DASHBOARD_HTML_PATH = Path(__file__).parent / "escalation_dashboard.html"
+ANALYTICS_HTML_PATH = Path(__file__).parent / "call_analytics_dashboard.html"
 
 
 class EscalationRequestHandler(BaseHTTPRequestHandler):
@@ -31,7 +35,7 @@ class EscalationRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, PATCH, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, PATCH, DELETE, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(body)
@@ -47,7 +51,7 @@ class EscalationRequestHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(HTTPStatus.NO_CONTENT)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, PATCH, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, PATCH, DELETE, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
@@ -83,6 +87,28 @@ class EscalationRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": f"Escalation {esc_id} not found"}, 404)
             return
 
+        if path == "/api/call-stats":
+            stats = get_call_stats()
+            self._send_json(stats)
+            return
+
+        if path == "/api/recent-calls":
+            try:
+                limit = int(query.get("limit", ["20"])[0])
+            except (ValueError, TypeError):
+                limit = 20
+            calls = list_recent_calls(limit=min(limit, 100))
+            self._send_json(calls)
+            return
+
+        if path == "/analytics":
+            if ANALYTICS_HTML_PATH.exists():
+                html = ANALYTICS_HTML_PATH.read_text(encoding="utf-8")
+                self._send_html(html)
+            else:
+                self._send_json({"error": "Analytics dashboard HTML file not found"}, 404)
+            return
+
         self._send_json({"error": "Not Found"}, 404)
 
     def do_PATCH(self):
@@ -112,6 +138,24 @@ class EscalationRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": f"Internal error: {exc}"}, 500)
             return
 
+        self._send_json({"error": "Not Found"}, 404)
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        if path in ("/api/call-logs", "/api/clear-calls"):
+            deleted = clear_call_logs()
+            self._send_json({"success": True, "deleted": deleted})
+            return
+        self._send_json({"error": "Not Found"}, 404)
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        if path in ("/api/call-logs", "/api/clear-calls"):
+            deleted = clear_call_logs()
+            self._send_json({"success": True, "deleted": deleted})
+            return
         self._send_json({"error": "Not Found"}, 404)
 
 
