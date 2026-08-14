@@ -21,8 +21,11 @@ from livekit.agents import (
 from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
+from banking_specialist import BankingSpecialistAgent
 from db import (
     create_escalation as db_create_escalation,
+)
+from db import (
     find_user_by_name,
     get_user,
     init_db,
@@ -31,12 +34,14 @@ from db import (
     save_user_memory,
 )
 from escalation_api import run_server
+from fraud_specialist import FraudSpecialistAgent
 from prompt import SYSTEM_PROMPT
+from safety import classify_safety_risk
 from scheme_checker import (
     format_eligibility_response_for_llm,
     query_scheme_eligibility_async,
 )
-from safety import classify_safety_risk
+from scheme_specialist import SchemeSpecialistAgent
 
 logger = logging.getLogger("agent")
 
@@ -81,12 +86,40 @@ ensure_escalation_api_started()
 
 class Assistant(Agent):
     SUCCESS_TOOLS: frozenset[str] = frozenset(
-        {"check_scheme_eligibility", "fraud_safety_check"}
+        {
+            "check_scheme_eligibility",
+            "fraud_safety_check",
+            "transfer_to_scheme_specialist",
+            "transfer_to_fraud_specialist",
+            "transfer_to_banking_specialist",
+        }
     )
 
-    def __init__(self) -> None:
-        super().__init__(instructions=SYSTEM_PROMPT)
+    def __init__(self, handoff_context: str = "") -> None:
+        instructions = SYSTEM_PROMPT
+        if handoff_context:
+            instructions += (
+                "\n\nCONTEXT FROM SPECIALIST AGENT (previous conversation summary):\n"
+                f"{handoff_context}\n"
+                "Use this context to continue helping the caller seamlessly. "
+                "Do NOT ask them to repeat anything already covered."
+            )
+        super().__init__(instructions=instructions)
         self._tools_used: set[str] = set()
+        self._handoff_context = handoff_context
+
+    async def on_enter(self) -> None:
+        """Resume a hand-back without making the caller repeat their request."""
+        if not self._handoff_context:
+            return
+        self.session.generate_reply(
+            instructions=(
+                "You have just received a specialist hand-back. Continue from the handoff "
+                "context immediately. If the caller's current topic needs a different "
+                "specialist, announce that connection and call the matching transfer tool in "
+                "this turn. Do not ask them to repeat anything."
+            )
+        )
 
     @llm.function_tool
     async def lookup_caller(
@@ -361,9 +394,7 @@ generated from the caller's name.
         """
         self._tools_used.add("create_escalation")
         if not consent_given:
-            logger.info(
-                "Escalation consent not given by %s — skipping.", caller_name
-            )
+            logger.info("Escalation consent not given by %s — skipping.", caller_name)
             return (
                 "The caller declined to share their information for escalation. "
                 "Nothing was sent. Respect their choice and continue helping "
@@ -401,6 +432,89 @@ generated from the caller's name.
             f"or 'within a reasonable timeframe'.\n"
             f"4. If this is a fraud case, also remind them to call 1930 "
             f"and report at cybercrime.gov.in right away."
+        )
+
+    @llm.function_tool
+    async def transfer_to_scheme_specialist(
+        self,
+        context: RunContext,
+        conversation_summary: str,
+    ):
+        """Transfer the caller to Yojana Mitra, our Government Scheme Specialist.
+
+        Call this tool immediately when the caller asks about ANY government financial
+        scheme (e.g. PM-KISAN, MUDRA, APY, PMJDY, PMAY, SSY), eligibility checks,
+        application process, required documents, or subsidies.
+
+        Args:
+            conversation_summary: A brief summary of what the caller asked and
+                any profile details they shared so the specialist continues seamlessly.
+        """
+        self._tools_used.add("transfer_to_scheme_specialist")
+        logger.info(
+            "Handing off to Scheme Specialist. Context: %s",
+            conversation_summary[:200],
+        )
+
+        specialist = SchemeSpecialistAgent(handoff_context=conversation_summary)
+        return (
+            specialist,
+            "Transferring you to Yojana Mitra, our Government Scheme Specialist now.",
+        )
+
+    @llm.function_tool
+    async def transfer_to_fraud_specialist(
+        self,
+        context: RunContext,
+        conversation_summary: str,
+    ):
+        """Transfer the caller to Suraksha Mitra, our Fraud & Safety Specialist.
+
+        Call this tool immediately when the caller reports a suspicious call,
+        active scam, OTP/PIN/password request, unauthorized debit, or safety concern.
+
+        Args:
+            conversation_summary: A brief summary of what happened, credentials
+                mentioned, and whether money moved.
+        """
+        self._tools_used.add("transfer_to_fraud_specialist")
+        logger.info(
+            "Handing off to Fraud Specialist. Context: %s",
+            conversation_summary[:200],
+        )
+
+        specialist = FraudSpecialistAgent(handoff_context=conversation_summary)
+        return (
+            specialist,
+            "Transferring you to Suraksha Mitra, our Fraud and Safety Specialist now.",
+        )
+
+    @llm.function_tool
+    async def transfer_to_banking_specialist(
+        self,
+        context: RunContext,
+        conversation_summary: str,
+    ):
+        """Transfer the caller to Bank Mitra, our Banking Guide Specialist.
+
+        Call this tool immediately when the caller asks about everyday banking:
+        UPI setup/usage, opening accounts, KYC, fixed deposits, interest rates,
+        cheques, bank statements, or card usage.
+
+        Args:
+            conversation_summary: A brief summary of which banking topic the
+                caller needs help with.
+        """
+        self._tools_used.add("transfer_to_banking_specialist")
+        logger.info(
+            "Handing off to Banking Specialist. Context: %s",
+            conversation_summary[:200],
+        )
+
+        specialist = BankingSpecialistAgent(handoff_context=conversation_summary)
+        return (
+            specialist,
+            "Transferring you to Bank Mitra, our Banking Guide now.",
         )
 
 
@@ -500,12 +614,12 @@ async def my_agent(ctx: JobContext):
         instruction = (
             f"This is a call with {caller_summary}.\n\n"
             "YOU MUST OPEN THE CALL WITH A WARM, FRIENDLY GREETING:\n"
-            "Greet the caller, state that you are DhanSathi from the Financial Literacy Initiative, "
+            "Greet the caller, state that you are धनसाथी from the Financial Literacy Initiative, "
             "and ask how you can help them with government schemes, banking, or financial safety today.\n"
-            "For example: 'Namaste! Main DhanSathi, Financial Literacy Initiative se. Aaj main aapki kya madad kar sakta hoon?' "
+            "For example: 'नमस्ते! मैं धनसाथी, Financial Literacy Initiative से। आज मैं आपकी क्या मदद कर सकता हूँ?' "
             "(Or in English: 'Namaste! This is DhanSathi from the Financial Literacy Initiative. How can I help you today?')"
         )
-        await session.generate_reply(instructions=instruction)
+        session.generate_reply(instructions=instruction)
 
     def _log_call(p: rtc.RemoteParticipant | None = None) -> None:
         """Write call log when participant disconnects or session ends."""
@@ -513,7 +627,9 @@ async def my_agent(ctx: JobContext):
         if assistant is None:
             return
         tools = list(assistant._tools_used)
-        outcome = "success" if assistant._tools_used & Assistant.SUCCESS_TOOLS else "failed"
+        outcome = (
+            "success" if assistant._tools_used & Assistant.SUCCESS_TOOLS else "failed"
+        )
         identity = p.identity if p is not None else ""
         asyncio.get_event_loop().run_in_executor(
             None,
@@ -538,7 +654,6 @@ async def my_agent(ctx: JobContext):
     def on_participant_disconnected(p: rtc.RemoteParticipant):
         _log_call(p)
 
-    # For SIP calls, trigger greeting when audio track is subscribed or after brief pause
     if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
         caller_type_str = "sip"
         logger.info(
@@ -560,14 +675,12 @@ async def my_agent(ctx: JobContext):
                     _bg_tasks.add(task)
                     task.add_done_callback(_bg_tasks.discard)
 
-            # Short fallback timer (1.5 seconds) to ensure greeting fires
             await asyncio.sleep(1.5)
             if not greeting_done:
                 await trigger_outbound_greeting(participant)
     else:
         caller_type_str = "web"
         await trigger_outbound_greeting(participant)
-
 
 
 if __name__ == "__main__":

@@ -197,3 +197,241 @@ def test_ensure_escalation_api_started() -> None:
     ensure_escalation_api_started(port=8999)
 
 
+def test_scheme_specialist_instantiation() -> None:
+    """SchemeSpecialistAgent initialises with its own instructions."""
+    from scheme_specialist import SchemeSpecialistAgent
+
+    agent = SchemeSpecialistAgent()
+    assert "Yojana Mitra" in agent._instructions
+    assert "योजना मित्र" in agent._instructions
+
+
+def test_scheme_specialist_receives_context() -> None:
+    """Handoff context from the main agent is embedded in specialist instructions."""
+    from scheme_specialist import SchemeSpecialistAgent
+
+    ctx = "Caller is a farmer from UP asking about PM-KISAN. Age 35, 2 hectares."
+    agent = SchemeSpecialistAgent(handoff_context=ctx)
+    assert ctx in agent._instructions
+    assert "CONTEXT FROM DHANSATHI" in agent._instructions
+
+
+def test_scheme_specialist_has_required_tools() -> None:
+    """Specialist should expose check_scheme_eligibility and hand_back_to_main_agent."""
+    from scheme_specialist import SchemeSpecialistAgent
+
+    agent = SchemeSpecialistAgent()
+    tool_names = {t.id for t in agent.tools}
+    assert "check_scheme_eligibility" in tool_names
+    assert "hand_back_to_main_agent" in tool_names
+
+
+def test_assistant_has_handoff_tool() -> None:
+    """Main Assistant should have the transfer_to_scheme_specialist tool."""
+    assistant = Assistant()
+    tool_names = {t.id for t in assistant.tools}
+    assert "transfer_to_scheme_specialist" in tool_names
+
+
+def test_assistant_accepts_handoff_context() -> None:
+    """When receiving hand-back context, Assistant embeds it in instructions."""
+    ctx = "Caller was with Yojana Mitra discussing SSY for daughter age 5."
+    assistant = Assistant(handoff_context=ctx)
+    assert ctx in assistant._instructions
+    assert "CONTEXT FROM SPECIALIST AGENT" in assistant._instructions
+
+
+@pytest.mark.asyncio
+async def test_scheme_specialist_eligibility_tool() -> None:
+    """Specialist's check_scheme_eligibility tool returns valid results."""
+    from scheme_specialist import SchemeSpecialistAgent
+
+    agent = SchemeSpecialistAgent()
+
+    class MockContext:
+        pass
+
+    result = await agent.check_scheme_eligibility(
+        context=MockContext(),
+        scheme_name="PM-KISAN",
+        occupation="farmer",
+        age=35,
+        has_cultivable_land=True,
+        land_size_hectares=2.0,
+        state="Uttar Pradesh",
+    )
+    assert "SCHEME ELIGIBILITY RESULT" in result
+    assert "PM-KISAN" in result
+
+
+@pytest.mark.asyncio
+async def test_scheme_specialist_handback_returns_main_agent() -> None:
+    """A hand-back must use LiveKit's Agent return contract, not await update_agent."""
+    from scheme_specialist import SchemeSpecialistAgent
+
+    class MockContext:
+        pass
+
+    result = await SchemeSpecialistAgent().hand_back_to_main_agent(
+        context=MockContext(), reason="caller asked how UPI works"
+    )
+    next_agent, message = result
+
+    assert isinstance(next_agent, Assistant)
+    assert "Transferring you back to DhanSathi" in message
+
+
+# ---------------------------------------------------------------------------
+# Fraud Specialist Agent Tests
+# ---------------------------------------------------------------------------
+
+
+def test_fraud_specialist_instantiation() -> None:
+    """FraudSpecialistAgent initialises with its own instructions."""
+    from fraud_specialist import FraudSpecialistAgent
+
+    agent = FraudSpecialistAgent()
+    assert "Suraksha Mitra" in agent._instructions
+    assert "सुरक्षा मित्र" in agent._instructions
+
+
+def test_fraud_specialist_receives_context() -> None:
+    """Handoff context from the main agent is embedded in fraud specialist instructions."""
+    from fraud_specialist import FraudSpecialistAgent
+
+    ctx = "Caller reports someone asked for OTP for a refund. Very distressed."
+    agent = FraudSpecialistAgent(handoff_context=ctx)
+    assert ctx in agent._instructions
+    assert "CONTEXT FROM DHANSATHI" in agent._instructions
+
+
+def test_fraud_specialist_has_required_tools() -> None:
+    """Fraud specialist should expose fraud_safety_check, create_escalation, and hand_back."""
+    from fraud_specialist import FraudSpecialistAgent
+
+    agent = FraudSpecialistAgent()
+    tool_names = {t.id for t in agent.tools}
+    assert "fraud_safety_check" in tool_names
+    assert "create_escalation" in tool_names
+    assert "hand_back_to_main_agent" in tool_names
+
+
+@pytest.mark.asyncio
+async def test_fraud_specialist_safety_check_tool() -> None:
+    """Fraud specialist's fraud_safety_check tool detects active fraud."""
+    from fraud_specialist import FraudSpecialistAgent
+
+    agent = FraudSpecialistAgent()
+
+    class MockContext:
+        pass
+
+    result = await agent.fraud_safety_check(
+        context=MockContext(),
+        caller_message="Someone asked me to share my OTP for a refund.",
+    )
+    assert "URGENT SAFETY INTERRUPT" in result
+    assert "1930" in result
+
+
+@pytest.mark.asyncio
+async def test_fraud_specialist_escalation_tool() -> None:
+    """Fraud specialist's create_escalation tool creates a ticket."""
+    from db import get_escalation, init_db
+    from fraud_specialist import FraudSpecialistAgent
+
+    init_db()
+    agent = FraudSpecialistAgent()
+
+    class MockContext:
+        pass
+
+    res = await agent.create_escalation(
+        context=MockContext(),
+        caller_name="Amit",
+        reason="fraud",
+        summary="Caller reports unauthorized withdrawal.",
+        what_agent_checked="Verified no credentials were shared.",
+        urgency="critical",
+        caller_language="hi-IN",
+        preferred_followup="phone",
+        consent_given=True,
+    )
+    assert "Escalation created successfully" in res
+    assert "Reference ID: ESC-" in res
+
+
+def test_assistant_has_fraud_handoff_tool() -> None:
+    """Main Assistant should have the transfer_to_fraud_specialist tool."""
+    assistant = Assistant()
+    tool_names = {t.id for t in assistant.tools}
+    assert "transfer_to_fraud_specialist" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# Banking Specialist Agent Tests
+# ---------------------------------------------------------------------------
+
+
+def test_banking_specialist_instantiation() -> None:
+    """BankingSpecialistAgent initialises with its own instructions."""
+    from banking_specialist import BankingSpecialistAgent
+
+    agent = BankingSpecialistAgent()
+    assert "Bank Mitra" in agent._instructions
+    assert "बैंक मित्र" in agent._instructions
+
+
+def test_banking_specialist_receives_context() -> None:
+    """Handoff context from the main agent is embedded in banking specialist instructions."""
+    from banking_specialist import BankingSpecialistAgent
+
+    ctx = "Caller wants to understand how to set up UPI on their phone."
+    agent = BankingSpecialistAgent(handoff_context=ctx)
+    assert ctx in agent._instructions
+    assert "CONTEXT FROM DHANSATHI" in agent._instructions
+
+
+def test_banking_specialist_has_required_tools() -> None:
+    """Banking specialist should expose hand_back_to_main_agent."""
+    from banking_specialist import BankingSpecialistAgent
+
+    agent = BankingSpecialistAgent()
+    tool_names = {t.id for t in agent.tools}
+    assert "hand_back_to_main_agent" in tool_names
+    # Banking specialist is knowledge-based — should NOT have data tools
+    assert "check_scheme_eligibility" not in tool_names
+    assert "fraud_safety_check" not in tool_names
+
+
+def test_assistant_has_banking_handoff_tool() -> None:
+    """Main Assistant should have the transfer_to_banking_specialist tool."""
+    assistant = Assistant()
+    tool_names = {t.id for t in assistant.tools}
+    assert "transfer_to_banking_specialist" in tool_names
+
+
+def test_assistant_has_all_three_handoff_tools() -> None:
+    """Main Assistant should have all three specialist handoff tools."""
+    assistant = Assistant()
+    tool_names = {t.id for t in assistant.tools}
+    assert "transfer_to_scheme_specialist" in tool_names
+    assert "transfer_to_fraud_specialist" in tool_names
+    assert "transfer_to_banking_specialist" in tool_names
+
+
+@pytest.mark.asyncio
+async def test_banking_handoff_returns_the_specialist_agent() -> None:
+    """The result shape is the LiveKit signal that performs the real handoff."""
+    from banking_specialist import BankingSpecialistAgent
+
+    class MockContext:
+        pass
+
+    next_agent, status = await Assistant().transfer_to_banking_specialist(
+        context=MockContext(),
+        conversation_summary="Caller wants to understand UPI setup.",
+    )
+
+    assert isinstance(next_agent, BankingSpecialistAgent)
+    assert "Bank Mitra" in status

@@ -23,23 +23,24 @@ const VIEW_MOTION_PROPS = {
   variants: {
     visible: {
       opacity: 1,
+      y: 0,
+      scale: 1,
     },
     hidden: {
       opacity: 0,
+      y: 8,
+      scale: 0.995,
     },
   },
   initial: 'hidden',
   animate: 'visible',
   exit: 'hidden',
   transition: {
-    duration: 0.5,
-    ease: 'linear',
+    duration: 0.28,
+    ease: [0.16, 1, 0.3, 1],
   },
 };
 
-/**
- * Connecting overlay shown during agent connection with network-slow awareness.
- */
 function ConnectingView({ isNetworkSlow }: { isNetworkSlow: boolean }) {
   return (
     <motion.div
@@ -47,15 +48,16 @@ function ConnectingView({ isNetworkSlow }: { isNetworkSlow: boolean }) {
       {...VIEW_MOTION_PROPS}
       className="bg-background flex min-h-svh flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center"
     >
-      {/* Spinner */}
-      <div className="mb-6">
-        <div className="border-primary/20 border-t-primary mx-auto size-12 animate-spin rounded-full border-4" />
+      <div className="connecting-orb mb-6">
+        <div className="connecting-orb-ring" />
+        <div className="connecting-orb-core">
+          <span className="text-lg font-black">₹</span>
+        </div>
       </div>
 
       <p className="text-foreground text-base font-semibold">DhanSathi से जुड़ रहे हैं…</p>
       <p className="text-muted-foreground mt-1 text-sm">Connecting to DhanSathi…</p>
 
-      {/* Network slow warning */}
       {isNetworkSlow && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -74,9 +76,6 @@ function ConnectingView({ isNetworkSlow }: { isNetworkSlow: boolean }) {
   );
 }
 
-/**
- * Call ended view shown after disconnect with follow-up actions.
- */
 function CallEndedView({ recap, onStartAgain }: { recap: CallRecap; onStartAgain: () => void }) {
   const listenToRecap = () => {
     if (!('speechSynthesis' in window)) return;
@@ -88,14 +87,35 @@ function CallEndedView({ recap, onStartAgain }: { recap: CallRecap; onStartAgain
     window.speechSynthesis.speak(utterance);
   };
 
+  const shareSummary = async () => {
+    const text = [
+      'DhanSathi · आज का सार / Call recap',
+      recap.topic,
+      recap.outcome,
+      `अगला कदम / Next step: ${recap.nextStep}`,
+      recap.escalationRef ? `Human support ref: ${recap.escalationRef}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+    try {
+      if (navigator.share) await navigator.share({ title: 'DhanSathi Call Recap', text });
+      else await navigator.clipboard.writeText(text);
+    } catch {
+    }
+  };
+
   return (
     <motion.div
       key="call-ended"
       {...VIEW_MOTION_PROPS}
       className="bg-background flex min-h-svh flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center"
     >
-      {/* Checkmark icon */}
-      <div className="bg-success/10 mb-6 flex size-16 items-center justify-center rounded-full">
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="bg-success/10 mb-6 flex size-16 items-center justify-center rounded-full"
+      >
         <svg
           width="28"
           height="28"
@@ -109,7 +129,7 @@ function CallEndedView({ recap, onStartAgain }: { recap: CallRecap; onStartAgain
         >
           <polyline points="20 6 9 17 4 12" />
         </svg>
-      </div>
+      </motion.div>
 
       <h2 className="text-foreground text-lg font-bold md:text-xl">बातचीत समाप्त हुई</h2>
       <p className="text-muted-foreground mt-1 text-sm">Conversation ended</p>
@@ -122,7 +142,7 @@ function CallEndedView({ recap, onStartAgain }: { recap: CallRecap; onStartAgain
         </span>
       </p>
 
-      <section className="border-border bg-card mt-5 w-full max-w-sm rounded-2xl border p-4 text-left shadow-sm">
+      <section className="recap-card mt-5 w-full max-w-sm p-4 text-left">
         <p className="text-success text-xs font-extrabold tracking-wide uppercase">
           Aaj ka saar · Call recap
         </p>
@@ -132,12 +152,50 @@ function CallEndedView({ recap, onStartAgain }: { recap: CallRecap; onStartAgain
           <p className="text-xs font-bold">Agla kadam · Next step</p>
           <p className="text-muted-foreground mt-1 text-xs leading-5">{recap.nextStep}</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={listenToRecap} className="mt-2 -ml-2 text-xs">
-          Listen to recap
-        </Button>
+        {recap.eligibleSchemes.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {recap.eligibleSchemes.map((scheme) => (
+              <span
+                key={scheme}
+                className="border-success/30 bg-success/10 text-success rounded-full border px-2 py-1 text-[11px] font-bold"
+              >
+                ✓ {scheme}
+              </span>
+            ))}
+          </div>
+        )}
+        {recap.escalationRef && (
+          <p className="border-success/25 bg-success/10 text-success mt-3 rounded-lg border px-2.5 py-2 text-xs font-bold">
+            🤝 Human expert alert · Ref: {recap.escalationRef}
+          </p>
+        )}
+        {recap.transcriptExcerpt.length > 0 && (
+          <details className="mt-3 rounded-xl border border-white/10 bg-black/10 px-3 py-2">
+            <summary className="text-foreground cursor-pointer text-xs font-bold">
+              हाल की बातचीत · Last exchanges
+            </summary>
+            <div className="text-muted-foreground mt-2 space-y-1.5 text-xs leading-5">
+              {recap.transcriptExcerpt.map((message, index) => (
+                <p key={`${message.text}-${index}`}>
+                  <span className="text-foreground font-bold">
+                    {message.fromUser ? 'आप / You' : 'DhanSathi'}:{' '}
+                  </span>
+                  {message.text}
+                </p>
+              ))}
+            </div>
+          </details>
+        )}
+        <div className="mt-3 flex gap-1">
+          <Button variant="ghost" size="sm" onClick={listenToRecap} className="-ml-2 text-xs">
+            🔊 Listen to recap
+          </Button>
+          <Button variant="ghost" size="sm" onClick={shareSummary} className="text-xs">
+            📤 Share Summary
+          </Button>
+        </div>
       </section>
 
-      {/* Follow-up actions */}
       <div className="mt-6 flex flex-col gap-3">
         <Button
           size="lg"
@@ -151,15 +209,6 @@ function CallEndedView({ recap, onStartAgain }: { recap: CallRecap; onStartAgain
   );
 }
 
-/**
- * Determine the top-level UI state from LiveKit's agent/session state.
- *
- * State mapping:
- *   disconnected + !hasBeenConnected  →  'ready'
- *   connecting/pre-connect-buffering/initializing/idle  →  'connecting'
- *   listening/thinking/speaking  →  'in-call'
- *   disconnected/failed + hasBeenConnected  →  'call-ended'
- */
 type UIState = 'ready' | 'connecting' | 'in-call' | 'call-ended';
 
 interface ViewControllerProps {
@@ -174,7 +223,6 @@ export function ViewController({ appConfig }: ViewControllerProps) {
   const { localParticipant } = useLocalParticipant();
   const { messages } = useSessionMessages(session);
 
-  // Track if we've ever been connected to distinguish "not started yet" from "call ended"
   const hasBeenConnectedRef = useRef(false);
   const [hasEnded, setHasEnded] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -201,14 +249,12 @@ export function ViewController({ appConfig }: ViewControllerProps) {
     }
   }, [isConnected]);
 
-  // Determine current UI state
   let uiState: UIState;
   if (hasEnded) {
     uiState = 'call-ended';
   } else if (!isConnected && !hasBeenConnectedRef.current) {
     uiState = isStarting ? 'connecting' : 'ready';
   } else if (isConnected) {
-    // Agent is in-call: listening, thinking, or speaking
     if (
       agent.state === 'connecting' ||
       agent.state === 'pre-connect-buffering' ||
@@ -246,7 +292,6 @@ export function ViewController({ appConfig }: ViewControllerProps) {
 
   return (
     <AnimatePresence mode="wait">
-      {/* Ready state: Welcome view */}
       {uiState === 'ready' && (
         <MotionWelcomeView
           key="welcome"
@@ -256,12 +301,10 @@ export function ViewController({ appConfig }: ViewControllerProps) {
         />
       )}
 
-      {/* Connecting state */}
       {uiState === 'connecting' && (
         <ConnectingView key="connecting" isNetworkSlow={isNetworkSlow} />
       )}
 
-      {/* In-call state: Session view */}
       {uiState === 'in-call' && (
         <MotionSessionView
           key="session-view"
@@ -287,7 +330,6 @@ export function ViewController({ appConfig }: ViewControllerProps) {
         />
       )}
 
-      {/* Call ended state */}
       {uiState === 'call-ended' && (
         <CallEndedView key="call-ended" recap={recapRef.current} onStartAgain={handleStartAgain} />
       )}

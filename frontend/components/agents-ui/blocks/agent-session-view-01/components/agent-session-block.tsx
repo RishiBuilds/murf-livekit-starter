@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Track } from 'livekit-client';
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
 import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
-import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
 import {
   AgentControlBar,
   type AgentControlBarControls,
 } from '@/components/agents-ui/agent-control-bar';
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { AgentStateIndicator } from '@/components/app/agent-state-indicator';
+import { LiveTranscriptPanel } from '@/components/app/live-transcript-panel';
+import { MobileTranscriptDrawer } from '@/components/app/mobile-transcript-drawer';
 import { SafetyNudge } from '@/components/app/safety-nudge';
 import { cn } from '@/lib/shadcn/utils';
 import { TileLayout } from './tile-view';
@@ -36,29 +37,6 @@ const BOTTOM_VIEW_MOTION_PROPS: MotionProps = {
     delay: 0.5,
     ease: 'easeOut',
   },
-};
-
-const CHAT_MOTION_PROPS: MotionProps = {
-  variants: {
-    hidden: {
-      opacity: 0,
-      transition: {
-        ease: 'easeOut',
-        duration: 0.3,
-      },
-    },
-    visible: {
-      opacity: 1,
-      transition: {
-        delay: 0.2,
-        ease: 'easeOut',
-        duration: 0.3,
-      },
-    },
-  },
-  initial: 'hidden',
-  animate: 'visible',
-  exit: 'hidden',
 };
 
 const SHIMMER_MOTION_PROPS: MotionProps = {
@@ -105,56 +83,20 @@ export function Fade({ top = false, bottom = false, className }: FadeProps) {
 }
 
 export interface AgentSessionView_01Props {
-  /**
-   * Message shown above the controls before the first chat message is sent.
-   *
-   * @default 'Agent is listening, ask it a question'
-   */
   preConnectMessage?: string;
-  /**
-   * Enables or disables the chat toggle and transcript input controls.
-   *
-   * @default true
-   */
   supportsChatInput?: boolean;
-  /**
-   * Enables or disables camera controls in the bottom control bar.
-   *
-   * @default true
-   */
   supportsVideoInput?: boolean;
-  /**
-   * Enables or disables screen sharing controls in the bottom control bar.
-   *
-   * @default true
-   */
   supportsScreenShare?: boolean;
-  /**
-   * Shows a pre-connect buffer state with a shimmer message before messages appear.
-   *
-   * @default true
-   */
   isPreConnectBufferEnabled?: boolean;
-
-  /** Selects the visualizer style rendered in the main tile area. */
   audioVisualizerType?: 'bar' | 'wave' | 'grid' | 'radial' | 'aura';
-  /** Primary hex color used by supported audio visualizer variants. */
   audioVisualizerColor?: `#${string}`;
-  /** Hue shift intensity used by certain visualizers. */
   audioVisualizerColorShift?: number;
-  /** Number of bars to render when `audioVisualizerType` is `bar`. */
   audioVisualizerBarCount?: number;
-  /** Number of rows in the visualizer when `audioVisualizerType` is `grid`. */
   audioVisualizerGridRowCount?: number;
-  /** Number of columns in the visualizer when `audioVisualizerType` is `grid`. */
   audioVisualizerGridColumnCount?: number;
-  /** Number of radial bars when `audioVisualizerType` is `radial`. */
   audioVisualizerRadialBarCount?: number;
-  /** Base radius of the radial visualizer when `audioVisualizerType` is `radial`. */
   audioVisualizerRadialRadius?: number;
-  /** Stroke width of the wave path when `audioVisualizerType` is `wave`. */
   audioVisualizerWaveLineWidth?: number;
-  /** Optional class name merged onto the outer `<section>` container. */
   className?: string;
 }
 
@@ -181,25 +123,15 @@ export function AgentSessionView_01({
   const session = useSessionContext();
   const { messages } = useSessionMessages(session);
   const [chatOpen, setChatOpen] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { state: agentState } = useAgent();
 
   const controls: AgentControlBarControls = {
     leave: true,
     microphone: true,
     chat: supportsChatInput,
-    camera: supportsVideoInput,
-    screenShare: supportsScreenShare,
+    camera: false,
+    screenShare: false,
   };
-
-  useEffect(() => {
-    const lastMessage = messages.at(-1);
-    const lastMessageIsLocal = lastMessage?.from?.isLocal === true;
-
-    if (scrollAreaRef.current && lastMessageIsLocal) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  }, [messages]);
 
   return (
     <section
@@ -212,49 +144,59 @@ export function AgentSessionView_01({
       <div className="dhan-call-grain" aria-hidden="true" />
       <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
 
-      {/* Agent state indicator with listening, thinking, speaking badge and captions */}
-      <div className="absolute inset-x-0 top-6 z-20 flex justify-center md:top-10">
+      <div className="absolute inset-x-0 top-6 z-20 flex justify-center md:top-10 md:right-[40%]">
         <AgentStateIndicator />
       </div>
       <SafetyNudge />
 
-      {/* transcript */}
-
-      <div className="absolute top-0 bottom-[135px] flex w-full flex-col md:bottom-[170px]">
-        <AnimatePresence>
-          {chatOpen && (
-            <motion.div
-              {...CHAT_MOTION_PROPS}
-              className="flex h-full w-full flex-col gap-4 space-y-3 transition-opacity duration-300 ease-out"
-            >
-              <AgentChatTranscript
-                agentState={agentState}
-                messages={messages}
-                className="mx-auto w-full max-w-2xl [&_.is-user>div]:rounded-[22px] [&>div>div]:px-4 [&>div>div]:pt-40 md:[&>div>div]:px-6"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="absolute inset-x-0 top-0 bottom-10 z-0 hidden grid-cols-5 md:grid">
+        <div className="relative col-span-3 min-h-0 border-r border-white/10">
+          <TileLayout
+            contained
+            chatOpen={false}
+            audioVisualizerType={audioVisualizerType}
+            audioVisualizerColor={audioVisualizerColor}
+            audioVisualizerColorShift={audioVisualizerColorShift}
+            audioVisualizerBarCount={audioVisualizerBarCount}
+            audioVisualizerRadialBarCount={audioVisualizerRadialBarCount}
+            audioVisualizerRadialRadius={audioVisualizerRadialRadius}
+            audioVisualizerGridRowCount={audioVisualizerGridRowCount}
+            audioVisualizerGridColumnCount={audioVisualizerGridColumnCount}
+            audioVisualizerWaveLineWidth={audioVisualizerWaveLineWidth}
+          />
+        </div>
+        <LiveTranscriptPanel
+          agentState={agentState}
+          messages={messages}
+          className="col-span-2 h-full rounded-none border-y-0 border-r-0"
+        />
       </div>
-      {/* Tile layout */}
-      <TileLayout
-        chatOpen={chatOpen}
-        audioVisualizerType={audioVisualizerType}
-        audioVisualizerColor={audioVisualizerColor}
-        audioVisualizerColorShift={audioVisualizerColorShift}
-        audioVisualizerBarCount={audioVisualizerBarCount}
-        audioVisualizerRadialBarCount={audioVisualizerRadialBarCount}
-        audioVisualizerRadialRadius={audioVisualizerRadialRadius}
-        audioVisualizerGridRowCount={audioVisualizerGridRowCount}
-        audioVisualizerGridColumnCount={audioVisualizerGridColumnCount}
-        audioVisualizerWaveLineWidth={audioVisualizerWaveLineWidth}
-      />
-      {/* Bottom */}
+
+      <div className="absolute inset-0 z-0 md:hidden">
+        <TileLayout
+          contained
+          chatOpen={false}
+          audioVisualizerType={audioVisualizerType}
+          audioVisualizerColor={audioVisualizerColor}
+          audioVisualizerColorShift={audioVisualizerColorShift}
+          audioVisualizerBarCount={audioVisualizerBarCount}
+          audioVisualizerRadialBarCount={audioVisualizerRadialBarCount}
+          audioVisualizerRadialRadius={audioVisualizerRadialRadius}
+          audioVisualizerGridRowCount={audioVisualizerGridRowCount}
+          audioVisualizerGridColumnCount={audioVisualizerGridColumnCount}
+          audioVisualizerWaveLineWidth={audioVisualizerWaveLineWidth}
+        />
+        <MobileTranscriptDrawer
+          agentState={agentState}
+          messages={messages}
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+        />
+      </div>
       <motion.div
         {...BOTTOM_VIEW_MOTION_PROPS}
-        className="absolute inset-x-3 bottom-0 z-50 md:inset-x-12"
+        className="absolute inset-x-3 bottom-0 z-50 md:right-[42%] md:left-8"
       >
-        {/* Pre-connect message */}
         {isPreConnectBufferEnabled && (
           <AnimatePresence>
             {messages.length === 0 && (
@@ -291,3 +233,4 @@ export function AgentSessionView_01({
     </section>
   );
 }
+

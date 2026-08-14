@@ -4,6 +4,7 @@ import {
   BarChart3,
   Headphones,
   Landmark,
+  Lock,
   Mic,
   ShieldCheck,
   Sparkles,
@@ -36,7 +37,7 @@ export const WelcomeView = ({
     <div className="landing-glow landing-glow-two" />
     <div className="landing-grid" />
     <section className="relative mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-6xl flex-col justify-between">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="brand-mark">
             <span>₹</span>
@@ -48,24 +49,24 @@ export const WelcomeView = ({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <a
             href="/analytics"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-300 shadow-sm transition-all hover:border-emerald-500/40 hover:bg-emerald-500/20"
+            className="header-pill header-pill-emerald"
           >
-            <BarChart3 size={14} className="text-emerald-400" />
-            <span>Call Analytics</span>
+            <BarChart3 size={14} />
+            <span className="hidden sm:inline">Call Analytics</span>
           </a>
           <a
             href="/escalations"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1.5 text-xs font-bold text-indigo-300 shadow-sm transition-all hover:border-indigo-500/40 hover:bg-indigo-500/20"
+            className="header-pill header-pill-indigo"
           >
-            <Headphones size={14} className="text-indigo-400" />
-            <span>Open Escalations</span>
+            <Headphones size={14} />
+            <span className="hidden sm:inline">Open Escalations</span>
           </a>
           <div className="language-pill">
             हिंदी <span>•</span> ENG
@@ -119,6 +120,20 @@ export const WelcomeView = ({
             No forms. No jargon. Just start speaking.
           </p>
         </div>
+        <div className="trust-row mt-6">
+          <span className="trust-item">
+            <Lock size={13} />
+            Free &amp; secure
+          </span>
+          <span className="trust-item">
+            <Sparkles size={13} />
+            Hindi + English
+          </span>
+          <span className="trust-item">
+            <Mic size={13} />
+            No forms, just talk
+          </span>
+        </div>
       </div>
       <div className="mx-auto grid w-full max-w-4xl gap-3 pt-9 pb-10 sm:grid-cols-3 sm:pb-4">
         {features.map(({ icon: Icon, title, copy }, index) => (
@@ -136,6 +151,7 @@ export const WelcomeView = ({
               <p className="text-sm font-bold">{title}</p>
               <p className="text-muted-foreground mt-1 text-xs">{copy}</p>
             </div>
+            <ArrowUpRight size={16} className="feature-arrow" />
           </button>
         ))}
       </div>

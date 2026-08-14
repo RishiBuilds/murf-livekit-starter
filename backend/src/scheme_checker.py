@@ -28,8 +28,8 @@ SCHEMES_DATABASE: dict[str, dict[str, Any]] = {
         "documents": ["Aadhaar Card", "Land ownership documents / Khasra-Khatauni", "Bank Account Details with NPCI seeding"],
         "min_age": 18,
         "occupations": ["farmer", "agriculturalist", "kisan", "cultivator"],
-        "max_land_hectares": None,  
-        "taxpayer_allowed": False, 
+        "max_land_hectares": None,
+        "taxpayer_allowed": False,
     },
     "mudra": {
         "id": "mudra",
@@ -53,9 +53,9 @@ SCHEMES_DATABASE: dict[str, dict[str, Any]] = {
         "benefits": "Guaranteed monthly pension of ₹1,000, ₹2,000, ₹3,000, ₹4,000, or ₹5,000 from age 60.",
         "documents": ["Aadhaar Card", "Savings Bank Account / Post Office Savings Account", "Mobile Number"],
         "min_age": 18,
-        "max_age": 40,  
+        "max_age": 40,
         "occupations": ["unorganized worker", "daily wager", "laborer", "maid", "driver", "farmer", "vendor", "carpenter", "tailor"],
-        "taxpayer_allowed": False,  
+        "taxpayer_allowed": False,
     },
     "pmjdy": {
         "id": "pmjdy",
@@ -65,7 +65,7 @@ SCHEMES_DATABASE: dict[str, dict[str, Any]] = {
         "description": "National mission for universal banking access providing zero-balance savings accounts, RuPay debit card, accident insurance, and overdraft facility.",
         "benefits": "Zero minimum balance requirement, free RuPay debit card with ₹2 Lakh accidental insurance cover, ₹10,000 overdraft after 6 months.",
         "documents": ["Aadhaar Card or Voter ID / Driving License / NREGA Card", "Passport size photograph"],
-        "min_age": 10,  
+        "min_age": 10,
         "occupations": ["all", "unbanked", "citizen", "student", "homemaker", "farmer", "worker"],
         "taxpayer_allowed": True,
     },
@@ -78,7 +78,7 @@ SCHEMES_DATABASE: dict[str, dict[str, Any]] = {
         "benefits": "Financial grant of ₹1.20 Lakh to ₹1.30 Lakh (Gramin) or interest subsidy up to ₹2.67 Lakh (Urban CLSS).",
         "documents": ["Aadhaar Card", "Income Certificate / Self-declaration", "Land / House possession proof", "Bank Account Details"],
         "min_age": 18,
-        "max_annual_income": 1800000,  
+        "max_annual_income": 1800000,
         "occupations": ["all", "low income", "homeless", "kutcha house resident"],
         "taxpayer_allowed": True,
     },
@@ -91,7 +91,7 @@ SCHEMES_DATABASE: dict[str, dict[str, Any]] = {
         "benefits": "Current interest rate of 8.2% per annum (compounded annually), tax rebate under Section 80C up to ₹1.5 Lakh.",
         "documents": ["Girl Child Birth Certificate", "Guardian Aadhaar / PAN", "Address Proof"],
         "target_gender": "female",
-        "max_target_age": 10,  
+        "max_target_age": 10,
         "occupations": ["parent", "guardian", "girl child"],
         "taxpayer_allowed": True,
     },
@@ -103,7 +103,7 @@ def _match_occupation(user_occupation: str, allowed_occupations: list[str]) -> b
         return True
     user_occ = user_occupation.strip().lower()
     if not user_occ:
-        return True  
+        return True
     for allowed in allowed_occupations:
         if allowed in user_occ or user_occ in allowed:
             return True
@@ -153,10 +153,15 @@ def evaluate_single_scheme(scheme_key: str, user_facts: dict[str, Any]) -> dict[
 
     annual_income = user_facts.get("annual_income")
     max_income = scheme.get("max_annual_income")
-    if annual_income is not None and max_income is not None:
-        if annual_income > max_income:
-            eligible = False
-            reasons.append(f"Annual income ₹{annual_income:,.0f} exceeds maximum threshold of ₹{max_income:,.0f}.")
+    if (
+        annual_income is not None
+        and max_income is not None
+        and annual_income > max_income
+    ):
+        eligible = False
+        reasons.append(
+            f"Annual income ₹{annual_income:,.0f} exceeds maximum threshold of ₹{max_income:,.0f}."
+        )
 
     user_occ = user_facts.get("occupation", "")
     if user_occ:

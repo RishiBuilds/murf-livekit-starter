@@ -1,4 +1,4 @@
-import { Inter } from 'next/font/google';
+import { Inter, Noto_Sans_Devanagari } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/app/theme-provider';
@@ -10,6 +10,11 @@ import '@/styles/globals.css';
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
+});
+
+const notoDevanagari = Noto_Sans_Devanagari({
+  variable: '--font-noto-devanagari',
+  subsets: ['devanagari'],
 });
 
 const commitMono = localFont({
@@ -55,6 +60,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       suppressHydrationWarning
       className={cn(
         inter.variable,
+        notoDevanagari.variable,
         commitMono.variable,
         'scroll-smooth font-sans antialiased'
       )}
@@ -65,17 +71,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <meta name="description" content={pageDescription} />
       </head>
       <body className="overflow-x-hidden">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <header className="hidden">
-            <a
-              href="/"
-              className="scale-100 transition-transform duration-300 hover:scale-110"
-            >
+            <a href="/" className="scale-100 transition-transform duration-300 hover:scale-110">
               <img src={logo} alt={`${companyName} Logo`} className="block size-6 dark:hidden" />
               <img
                 src={logoDark ?? logo}
