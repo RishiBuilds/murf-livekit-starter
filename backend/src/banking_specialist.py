@@ -1,6 +1,12 @@
 import logging
 
-from livekit.agents import Agent, RunContext, llm
+from livekit.agents import Agent, RunContext, llm, tts
+
+from voice_config import (
+    DEFAULT_MURF_VOICE_BANKING,
+    DEFAULT_MURF_VOICE_MAIN,
+    create_murf_tts,
+)
 
 logger = logging.getLogger("agent.banking_specialist")
 
@@ -77,7 +83,11 @@ TOOLS:
 
 
 class BankingSpecialistAgent(Agent):
-    def __init__(self, handoff_context: str = "") -> None:
+    def __init__(
+        self,
+        handoff_context: str = "",
+        tts: tts.TTS | str | None = None,
+    ) -> None:
         instructions = BANKING_SPECIALIST_PROMPT
         if handoff_context:
             instructions += (
@@ -86,7 +96,13 @@ class BankingSpecialistAgent(Agent):
                 "Use this context to continue helping the caller. Do NOT ask "
                 "them to repeat anything mentioned above."
             )
-        super().__init__(instructions=instructions)
+        tts_instance = (
+            tts if tts is not None else create_murf_tts(DEFAULT_MURF_VOICE_BANKING)
+        )
+        if tts_instance is not None:
+            super().__init__(instructions=instructions, tts=tts_instance)
+        else:
+            super().__init__(instructions=instructions)
         self._handoff_context = handoff_context
 
     async def on_enter(self) -> None:
@@ -116,5 +132,8 @@ class BankingSpecialistAgent(Agent):
             f"Original context: {self._handoff_context}"
         )
 
-        main_agent = Assistant(handoff_context=hand_back_summary)
+        main_agent = Assistant(
+            handoff_context=hand_back_summary,
+            tts=create_murf_tts(DEFAULT_MURF_VOICE_MAIN),
+        )
         return main_agent, "Transferring you back to DhanSathi now."

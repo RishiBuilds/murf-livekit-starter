@@ -17,6 +17,7 @@ from livekit.agents import (
     llm,
     room_io,
     tokenize,
+    tts,
 )
 from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -42,6 +43,13 @@ from scheme_checker import (
     query_scheme_eligibility_async,
 )
 from scheme_specialist import SchemeSpecialistAgent
+from voice_config import (
+    DEFAULT_MURF_VOICE_BANKING,
+    DEFAULT_MURF_VOICE_FRAUD,
+    DEFAULT_MURF_VOICE_MAIN,
+    DEFAULT_MURF_VOICE_SCHEME,
+    create_murf_tts,
+)
 
 logger = logging.getLogger("agent")
 
@@ -95,7 +103,11 @@ class Assistant(Agent):
         }
     )
 
-    def __init__(self, handoff_context: str = "") -> None:
+    def __init__(
+        self,
+        handoff_context: str = "",
+        tts: tts.TTS | str | None = None,
+    ) -> None:
         instructions = SYSTEM_PROMPT
         if handoff_context:
             instructions += (
@@ -104,7 +116,13 @@ class Assistant(Agent):
                 "Use this context to continue helping the caller seamlessly. "
                 "Do NOT ask them to repeat anything already covered."
             )
-        super().__init__(instructions=instructions)
+        tts_instance = (
+            tts if tts is not None else create_murf_tts(DEFAULT_MURF_VOICE_MAIN)
+        )
+        if tts_instance is not None:
+            super().__init__(instructions=instructions, tts=tts_instance)
+        else:
+            super().__init__(instructions=instructions)
         self._tools_used: set[str] = set()
         self._handoff_context = handoff_context
 
@@ -452,11 +470,15 @@ generated from the caller's name.
         """
         self._tools_used.add("transfer_to_scheme_specialist")
         logger.info(
-            "Handing off to Scheme Specialist. Context: %s",
+            "Handing off to Scheme Specialist (voice=%s). Context: %s",
+            DEFAULT_MURF_VOICE_SCHEME,
             conversation_summary[:200],
         )
 
-        specialist = SchemeSpecialistAgent(handoff_context=conversation_summary)
+        specialist = SchemeSpecialistAgent(
+            handoff_context=conversation_summary,
+            tts=create_murf_tts(DEFAULT_MURF_VOICE_SCHEME),
+        )
         return (
             specialist,
             "Transferring you to Yojana Mitra, our Government Scheme Specialist now.",
@@ -479,11 +501,15 @@ generated from the caller's name.
         """
         self._tools_used.add("transfer_to_fraud_specialist")
         logger.info(
-            "Handing off to Fraud Specialist. Context: %s",
+            "Handing off to Fraud Specialist (voice=%s). Context: %s",
+            DEFAULT_MURF_VOICE_FRAUD,
             conversation_summary[:200],
         )
 
-        specialist = FraudSpecialistAgent(handoff_context=conversation_summary)
+        specialist = FraudSpecialistAgent(
+            handoff_context=conversation_summary,
+            tts=create_murf_tts(DEFAULT_MURF_VOICE_FRAUD),
+        )
         return (
             specialist,
             "Transferring you to Suraksha Mitra, our Fraud and Safety Specialist now.",
@@ -507,11 +533,15 @@ generated from the caller's name.
         """
         self._tools_used.add("transfer_to_banking_specialist")
         logger.info(
-            "Handing off to Banking Specialist. Context: %s",
+            "Handing off to Banking Specialist (voice=%s). Context: %s",
+            DEFAULT_MURF_VOICE_BANKING,
             conversation_summary[:200],
         )
 
-        specialist = BankingSpecialistAgent(handoff_context=conversation_summary)
+        specialist = BankingSpecialistAgent(
+            handoff_context=conversation_summary,
+            tts=create_murf_tts(DEFAULT_MURF_VOICE_BANKING),
+        )
         return (
             specialist,
             "Transferring you to Bank Mitra, our Banking Guide now.",
@@ -542,13 +572,15 @@ async def my_agent(ctx: JobContext):
     assistant: Assistant | None = None
     await ctx.connect()
 
+    main_tts = create_murf_tts(DEFAULT_MURF_VOICE_MAIN)
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=google.LLM(
             model="gemini-3.5-flash-lite",
         ),
-        tts=murf.TTS(
-            voice="anisha",
+        tts=main_tts
+        or murf.TTS(
+            voice=DEFAULT_MURF_VOICE_MAIN,
             style="Conversation",
             tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
             text_pacing=True,
@@ -558,7 +590,7 @@ async def my_agent(ctx: JobContext):
         preemptive_generation=True,
     )
 
-    assistant = Assistant()
+    assistant = Assistant(tts=main_tts)
     await session.start(
         agent=assistant,
         room=ctx.room,

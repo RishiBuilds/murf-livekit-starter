@@ -1,4 +1,3 @@
-import os
 import pytest
 from livekit.agents import AgentSession, inference, llm
 
@@ -337,7 +336,7 @@ async def test_fraud_specialist_safety_check_tool() -> None:
 @pytest.mark.asyncio
 async def test_fraud_specialist_escalation_tool() -> None:
     """Fraud specialist's create_escalation tool creates a ticket."""
-    from db import get_escalation, init_db
+    from db import init_db
     from fraud_specialist import FraudSpecialistAgent
 
     init_db()
@@ -435,3 +434,123 @@ async def test_banking_handoff_returns_the_specialist_agent() -> None:
 
     assert isinstance(next_agent, BankingSpecialistAgent)
     assert "Bank Mitra" in status
+
+
+# ---------------------------------------------------------------------------
+# Multi-Agent Voice Handover Tests
+# ---------------------------------------------------------------------------
+
+
+def test_voice_config_defaults() -> None:
+    """Verify default voices configured for each agent role."""
+    from voice_config import (
+        DEFAULT_MURF_VOICE_BANKING,
+        DEFAULT_MURF_VOICE_FRAUD,
+        DEFAULT_MURF_VOICE_MAIN,
+        DEFAULT_MURF_VOICE_SCHEME,
+        create_murf_tts,
+    )
+
+    assert DEFAULT_MURF_VOICE_MAIN == "anisha"
+    assert DEFAULT_MURF_VOICE_BANKING == "samar"
+    assert DEFAULT_MURF_VOICE_FRAUD == "samar"
+    assert DEFAULT_MURF_VOICE_SCHEME == "pooja"
+
+    # Test create_murf_tts helper
+    tts_samar = create_murf_tts("samar", api_key="mock-key")
+    assert tts_samar is not None
+    assert tts_samar._opts.voice == "samar"
+    assert tts_samar._opts.style == "Conversation"
+
+
+def test_specialist_agents_voice_assignments() -> None:
+    """Each specialist agent must have its distinct voice assigned on initialization."""
+    from banking_specialist import BankingSpecialistAgent
+    from fraud_specialist import FraudSpecialistAgent
+    from scheme_specialist import SchemeSpecialistAgent
+
+    banking_agent = BankingSpecialistAgent()
+    assert banking_agent._tts is not None
+    assert banking_agent._tts._opts.voice == "samar"
+
+    fraud_agent = FraudSpecialistAgent()
+    assert fraud_agent._tts is not None
+    assert fraud_agent._tts._opts.voice == "samar"
+
+    scheme_agent = SchemeSpecialistAgent()
+    assert scheme_agent._tts is not None
+    assert scheme_agent._tts._opts.voice == "pooja"
+
+    main_agent = Assistant()
+    assert main_agent._tts is not None
+    assert main_agent._tts._opts.voice == "anisha"
+
+
+@pytest.mark.asyncio
+async def test_handoff_tools_preserve_specialist_voices() -> None:
+    """Handoff tools from Assistant create specialists with their dedicated voices."""
+    from banking_specialist import BankingSpecialistAgent
+    from fraud_specialist import FraudSpecialistAgent
+    from scheme_specialist import SchemeSpecialistAgent
+
+    class MockContext:
+        pass
+
+    assistant = Assistant()
+
+    banking_agent, _ = await assistant.transfer_to_banking_specialist(
+        context=MockContext(),
+        conversation_summary="UPI help needed",
+    )
+    assert isinstance(banking_agent, BankingSpecialistAgent)
+    assert banking_agent._tts._opts.voice == "samar"
+
+    fraud_agent, _ = await assistant.transfer_to_fraud_specialist(
+        context=MockContext(),
+        conversation_summary="Suspicious OTP call",
+    )
+    assert isinstance(fraud_agent, FraudSpecialistAgent)
+    assert fraud_agent._tts._opts.voice == "samar"
+
+    scheme_agent, _ = await assistant.transfer_to_scheme_specialist(
+        context=MockContext(),
+        conversation_summary="PM-KISAN eligibility check",
+    )
+    assert isinstance(scheme_agent, SchemeSpecialistAgent)
+    assert scheme_agent._tts._opts.voice == "pooja"
+
+
+@pytest.mark.asyncio
+async def test_specialist_handback_restores_anisha_voice() -> None:
+    """When a specialist hands back to the main agent, DhanSathi's voice (anisha) is restored."""
+    from banking_specialist import BankingSpecialistAgent
+    from fraud_specialist import FraudSpecialistAgent
+    from scheme_specialist import SchemeSpecialistAgent
+
+    class MockContext:
+        pass
+
+    # Bank Mitra handback
+    bank_agent = BankingSpecialistAgent()
+    ret_agent, _ = await bank_agent.hand_back_to_main_agent(
+        context=MockContext(),
+        reason="Caller needs scheme eligibility check",
+    )
+    assert isinstance(ret_agent, Assistant)
+    assert ret_agent._tts._opts.voice == "anisha"
+    # Suraksha Mitra handback
+    fraud_agent = FraudSpecialistAgent()
+    ret_agent, _ = await fraud_agent.hand_back_to_main_agent(
+        context=MockContext(),
+        reason="Caller query outside fraud scope",
+    )
+    assert isinstance(ret_agent, Assistant)
+    assert ret_agent._tts._opts.voice == "anisha"
+    # Yojana Mitra handback
+    scheme_agent = SchemeSpecialistAgent()
+    ret_agent, _ = await scheme_agent.hand_back_to_main_agent(
+        context=MockContext(),
+        reason="Caller asks for human escalation",
+    )
+    assert isinstance(ret_agent, Assistant)
+    assert ret_agent._tts._opts.voice == "anisha"
