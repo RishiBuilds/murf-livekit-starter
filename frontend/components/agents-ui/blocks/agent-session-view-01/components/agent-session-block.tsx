@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Track } from 'livekit-client';
+import { LockKeyhole, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
 import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
 import {
@@ -144,7 +145,25 @@ export function AgentSessionView_01({
       <div className="dhan-call-grain" aria-hidden="true" />
       <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
 
-      <div className="absolute inset-x-0 top-6 z-20 flex justify-center md:top-10 md:right-[40%]">
+      <header className="dhan-call-header">
+        <div className="dhan-call-brand">
+          <span className="dhan-call-brand-mark">₹</span>
+          <span>
+            <strong>DhanSathi</strong>
+            <small>Your financial companion</small>
+          </span>
+        </div>
+        <div className="dhan-call-meta">
+          <span className="dhan-secure-pill">
+            <LockKeyhole size={12} /> Secure voice session
+          </span>
+          <span className="dhan-live-pill">
+            <i /> Live
+          </span>
+        </div>
+      </header>
+
+      <div className="absolute inset-x-0 top-24 z-20 flex justify-center md:top-10 md:right-[40%]">
         <AgentStateIndicator />
       </div>
       <SafetyNudge />
@@ -193,6 +212,9 @@ export function AgentSessionView_01({
           onOpenChange={setChatOpen}
         />
       </div>
+      <div className="dhan-call-assurance">
+        <ShieldCheck size={13} /> DhanSathi never asks for your OTP or PIN
+      </div>
       <motion.div
         {...BOTTOM_VIEW_MOTION_PROPS}
         className="absolute inset-x-3 bottom-0 z-50 md:right-[42%] md:left-8"
@@ -233,4 +255,3 @@ export function AgentSessionView_01({
     </section>
   );
 }
-

@@ -77,62 +77,76 @@ export const WelcomeView = ({
           </div>
         </div>
       </div>
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-        <div className="voice-orb mb-7 sm:mb-9">
-          <div className="voice-orb-ring voice-orb-ring-one" />
-          <div className="voice-orb-ring voice-orb-ring-two" />
-          <div className="voice-orb-core">
-            <Mic size={34} strokeWidth={2.2} />
+      <div className="landing-hero mx-auto grid w-full max-w-5xl items-center gap-10 py-8 lg:grid-cols-[1fr_0.84fr] lg:gap-16">
+        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+          <div className="eyebrow">
+            <Sparkles size={14} />
+            Your AI financial companion
           </div>
-          <span className="voice-orb-pulse" />
-        </div>
-        <div className="eyebrow">
-          <Sparkles size={14} />
-          Financial guidance for every Indian
-        </div>
-        <h1 className="mt-5 max-w-2xl text-4xl font-black tracking-[-0.055em] text-balance sm:text-5xl md:text-6xl">
-          Benefits, banking and safety.{' '}
-          <span className="text-gradient">Made easy to understand.</span>
-        </h1>
-        <p className="text-muted-foreground mt-5 max-w-xl text-sm leading-6 sm:text-base sm:leading-7">
-          सरकारी योजनाएँ, banking help और fraud safety. बस बोलिए। Get clear guidance in simple Hindi
-          or English.
-        </p>
-        <Button
-          size="lg"
-          onClick={onStartCall}
-          className="start-call-button group mt-8 h-14 w-full max-w-sm rounded-2xl text-sm font-extrabold sm:text-base"
-        >
-          <span className="flex items-center gap-2">
-            <Mic size={18} fill="currentColor" />
-            {startButtonText}
-          </span>
-          <ArrowUpRight
-            className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-            size={19}
-          />
-        </Button>
-        <div className="border-success/25 bg-success/8 mt-4 max-w-sm rounded-xl border px-3 py-2 text-left">
-          <p className="text-foreground text-xs font-bold">
-            AI assistant · DhanSathi kabhi OTP, PIN, ya paise nahi maangti.
+          <h1 className="mt-5 max-w-2xl text-4xl font-black tracking-[-0.055em] text-balance sm:text-5xl md:text-6xl">
+            Guidance that feels like <span className="text-gradient">a conversation.</span>
+          </h1>
+          <p className="text-muted-foreground mt-5 max-w-xl text-sm leading-6 sm:text-base sm:leading-7">
+            सरकारी योजनाएँ, banking help और fraud safety. बस बोलिए। Get clear, practical answers in
+            simple Hindi or English.
           </p>
-          <p className="text-muted-foreground mt-0.5 text-[11px]">
-            No forms. No jargon. Just start speaking.
-          </p>
+          <Button
+            size="lg"
+            onClick={onStartCall}
+            className="start-call-button group mt-8 h-14 w-full max-w-sm rounded-2xl text-sm font-extrabold sm:text-base"
+          >
+            <span className="flex items-center gap-2">
+              <Mic size={18} fill="currentColor" />
+              {startButtonText}
+            </span>
+            <ArrowUpRight
+              className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+              size={19}
+            />
+          </Button>
+          <div className="landing-safety-note mt-4 max-w-sm text-left">
+            <ShieldCheck size={16} />
+            <span>
+              <strong>Private by design.</strong> DhanSathi never asks for your OTP, PIN, or money.
+            </span>
+          </div>
+          <div className="trust-row mt-6 lg:justify-start">
+            <span className="trust-item">
+              <Lock size={13} /> Free &amp; secure
+            </span>
+            <span className="trust-item">
+              <Sparkles size={13} /> Hindi + English
+            </span>
+            <span className="trust-item">
+              <Mic size={13} /> Just talk
+            </span>
+          </div>
         </div>
-        <div className="trust-row mt-6">
-          <span className="trust-item">
-            <Lock size={13} />
-            Free &amp; secure
-          </span>
-          <span className="trust-item">
-            <Sparkles size={13} />
-            Hindi + English
-          </span>
-          <span className="trust-item">
-            <Mic size={13} />
-            No forms, just talk
-          </span>
+
+        <div className="landing-preview" aria-label="DhanSathi voice session preview">
+          <div className="landing-preview-status">
+            <span className="online-dot" /> DhanSathi is ready
+            <span>Secure voice session</span>
+          </div>
+          <div className="landing-wave" aria-hidden="true">
+            {Array.from({ length: 33 }, (_, index) => (
+              <i key={index} style={{ '--delay': `${index * 45}ms` } as React.CSSProperties} />
+            ))}
+          </div>
+          <div className="landing-agent-label">
+            <span className="landing-agent-icon">₹</span>
+            <span>
+              <strong>DhanSathi</strong>
+              <small>Financial companion · Hindi + English</small>
+            </span>
+          </div>
+          <div className="landing-conversation-card">
+            <p className="landing-speaker you">You</p>
+            <p>मुझे PM-KISAN के बारे में जानना है।</p>
+            <p className="landing-speaker agent">DhanSathi</p>
+            <p>I can help you check eligibility and explain the next steps.</p>
+          </div>
+          <p className="landing-preview-caption">Tap start and speak naturally</p>
         </div>
       </div>
       <div className="mx-auto grid w-full max-w-4xl gap-3 pt-9 pb-10 sm:grid-cols-3 sm:pb-4">

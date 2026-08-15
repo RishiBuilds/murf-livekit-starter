@@ -16,7 +16,6 @@ if (-not (Test-CommandExists "pnpm")) {
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Start each service in its own PowerShell window so logs remain visible.
 if (Test-CommandExists "livekit-server") {
   Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$repoRoot'; livekit-server --dev"
 } else {

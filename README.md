@@ -1,8 +1,28 @@
-# Voice Agent Starter — Powered by Murf Falcon
+# DhanSathi — India-first Financial Voice Assistant
 
-Build a production voice AI agent in 5 minutes. Powered by the fastest TTS on the market - swap the system prompt to build anything from customer support to language tutors.
+DhanSathi is a bilingual financial companion that makes government schemes, banking guidance, and fraud-safety help easier to understand through a natural voice conversation. It is powered by Murf Falcon TTS, LiveKit Agents, Deepgram STT, and Gemini.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Murf Falcon](https://img.shields.io/badge/TTS-Murf%20Falcon-6366F1)](https://murf.ai/api/docs/text-to-speech/streaming) [![LiveKit](https://img.shields.io/badge/Transport-LiveKit-002cf2)](https://docs.livekit.io) [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+
+---
+
+## DhanSathi Experience
+
+The frontend is designed as a focused, secure voice product—not a generic chat screen.
+
+- **Premium voice homepage** — an emerald-on-dark landing experience with an animated waveform, voice-session preview, and a clear start-speaking action.
+- **Live call workspace** — real-time agent state, transcript, visualizer, voice controls, and a persistent OTP/PIN safety reminder.
+- **Hindi + English support** — bilingual language cues and transcripts make the interface approachable for more users.
+- **Financial safety by design** — DhanSathi provides general guidance only and never asks users for their OTP, PIN, passwords, or money.
+
+### Frontend design files
+
+| Area | File |
+| --- | --- |
+| Homepage experience | `frontend/components/app/welcome-view.tsx` |
+| Live voice-session layout | `frontend/components/agents-ui/blocks/agent-session-view-01/components/agent-session-block.tsx` |
+| DhanSathi visual system and responsive styles | `frontend/styles/globals.css` |
+| Product branding and voice visualizer settings | `frontend/app-config.ts` |
 
 ---
 
@@ -118,7 +138,7 @@ cd frontend && pnpm dev
 
 Then open **http://localhost:3000** in your browser.
 
-You should now see the voice agent UI. Click **Start talking**, allow microphone access, and speak — the agent will respond with Murf Falcon TTS. Ensure your backend and (if using Option B) LiveKit server are running.
+You should now see the DhanSathi homepage. Click **Start conversation**, allow microphone access, and speak in Hindi or English. The assistant will respond with Murf Falcon TTS. Ensure your backend and (if using Option B) LiveKit server are running.
 
 ---
 
@@ -170,7 +190,7 @@ If the agent doesn't connect, double-check that both services point to the same 
 
 ## Change the Use Case
 
-The default system prompt makes this a **customer support agent**. You can change the agent’s behavior by editing the prompt.
+The current system prompt makes this a **financial guidance assistant for India**. You can change the agent’s behavior by editing the prompt.
 
 **Where the prompt lives:** `backend/src/agent.py`- the `SYSTEM_PROMPT` constant (near the top of the file, after the imports). Change that string to change what your voice agent does.
 
