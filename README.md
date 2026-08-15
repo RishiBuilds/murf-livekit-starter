@@ -26,13 +26,20 @@ The frontend is designed as a focused, secure voice product—not a generic chat
 
 ---
 
-## Why Murf Falcon
+## What DhanSathi helps with
 
-- **55ms model latency** - fastest production TTS
-- **130ms time-to-first-audio** across 10+ global regions
-- **$0.01/1000 characters** - up to 10x cheaper than alternatives
-- **150+ voices** across 35+ languages
-- **99.38% pronunciation accuracy**
+- **Government schemes** — PM-KISAN, MUDRA, APY, PMJDY, PMAY, Sukanya Samriddhi, eligibility, and application guidance.
+- **Everyday banking** — UPI, KYC, accounts, fixed deposits, interest, cheques, and statements in simple language.
+- **Fraud safety** — scam awareness, OTP/PIN safety, suspicious transactions, and guidance for reporting fraud through 1930.
+- **Human support** — creates an escalation ticket when a caller asks for a human expert.
+- **Natural bilingual support** — warm Hinglish or English responses, with short, clear voice-friendly answers.
+
+### Why Murf Falcon
+
+- **55ms model latency** — responsive conversation without awkward pauses.
+- **130ms time-to-first-audio** across 10+ global regions.
+- **150+ voices** across 35+ languages, including Indian English options.
+- **Streaming TTS** — pairs with LiveKit for low-latency, real-time voice sessions.
 
 ---
 
@@ -40,18 +47,20 @@ The frontend is designed as a focused, secure voice product—not a generic chat
 
 ```mermaid
 flowchart LR
-    A[🎙️ User speaks] -->|audio| B[Deepgram STT]
-    B -->|text| C[LLM]
-    C -->|response text| D[Murf Falcon TTS]
-    D -->|audio| E[LiveKit]
-    E -->|stream| F[🔊 User hears]
+    A["🎙️ Caller speaks"] -->|audio| B["Deepgram Nova-3 STT"]
+    B -->|transcript| C["DhanSathi · Gemini"]
+    C -->|routes request| D["Yojana · Bank · Suraksha specialists"]
+    D -->|safe response| E["Murf Falcon TTS"]
+    E -->|real-time audio| F["LiveKit"]
+    F -->|stream| G["🔊 Caller hears"]
 
     style A fill:#444441,stroke:#888780,color:#fff
     style B fill:#185FA5,stroke:#85B7EB,color:#fff
-    style C fill:#534AB7,stroke:#AFA9EC,color:#fff
-    style D fill:#0F6E56,stroke:#5DCAA5,color:#fff
+    style C fill:#0F6E56,stroke:#5DCAA5,color:#fff
+    style D fill:#534AB7,stroke:#AFA9EC,color:#fff
     style E fill:#D85A30,stroke:#F0997B,color:#fff
-    style F fill:#444441,stroke:#888780,color:#fff
+    style F fill:#0F6E56,stroke:#5DCAA5,color:#fff
+    style G fill:#444441,stroke:#888780,color:#fff
 ```
 
 ---
@@ -78,7 +87,7 @@ flowchart LR
 ### Step 1: Clone the repo
 
 ```bash
-git clone https://github.com/murf-ai/murf-livekit-starter.git
+git clone https://github.com/RishiBuilds/murf-livekit-starter.git
 cd murf-livekit-starter
 ```
 
@@ -165,7 +174,7 @@ The backend runs as a long-lived Python process that connects to LiveKit as an a
 
 ### Frontend (Next.js) — Deploy to Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/murf-ai/murf-livekit-starter&root-directory=frontend&env=LIVEKIT_URL,LIVEKIT_API_KEY,LIVEKIT_API_SECRET&project-name=murf-voice-agent&repository-name=murf-voice-agent)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/RishiBuilds/murf-livekit-starter&root-directory=frontend&env=LIVEKIT_URL,LIVEKIT_API_KEY,LIVEKIT_API_SECRET&project-name=dhansathi&repository-name=dhansathi)
 
 Set these environment variables in Vercel:
 
@@ -180,9 +189,9 @@ The frontend is a standard Next.js app. Point it at the same LiveKit instance yo
 
 The frontend and backend don't call each other directly — they both connect to **LiveKit**, which handles the real-time audio transport.
 
-1. Use the **same** `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` on both Railway and Vercel
-2. Set `AGENT_NAME=my-agent` on Vercel — this matches the `agent_name="my-agent"` registered in `backend/src/agent.py`
-3. Verify: Railway logs should show the agent connected to LiveKit. Open your Vercel URL, click **Start talking** — the agent should respond
+1. Use the **same** `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` on both Railway and Vercel.
+2. Set `AGENT_NAME=my-agent` on Vercel — it matches the agent registered in `backend/src/agent.py`.
+3. Verify that Railway logs show the agent connected to LiveKit. Open your Vercel URL, click **Start conversation**, and speak to DhanSathi.
 
 If the agent doesn't connect, double-check that both services point to the same LiveKit project and that the backend is running (check Railway logs).
 
@@ -192,29 +201,19 @@ If the agent doesn't connect, double-check that both services point to the same 
 
 The current system prompt makes this a **financial guidance assistant for India**. You can change the agent’s behavior by editing the prompt.
 
-**Where the prompt lives:** `backend/src/agent.py`- the `SYSTEM_PROMPT` constant (near the top of the file, after the imports). Change that string to change what your voice agent does.
+**Where the prompt lives:** `backend/src/prompt.py` — the `SYSTEM_PROMPT` constant. Change that string to alter the assistant's behaviour, routing, and conversation tone.
 
-### Example prompts (copy-paste)
+### DhanSathi specialist routing
 
-**Customer Support (default):**
+The primary assistant routes callers to the correct specialist instead of trying to handle every topic in one generic response.
 
-```
-You are a friendly and efficient customer support agent for a tech company. Help users with account issues, billing questions, and product troubleshooting. Be concise, empathetic, and solution-oriented. If you don't know something, say so honestly and offer to escalate.
-```
+| Specialist | Handles |
+| --- | --- |
+| **Yojana Mitra** | Government schemes, eligibility checks, subsidies, and applications |
+| **Bank Mitra** | UPI, KYC, accounts, deposits, interest, cheques, and banking concepts |
+| **Suraksha Mitra** | Scams, OTP/PIN fraud, suspicious calls, unauthorized transactions, and reporting guidance |
 
-**Language Tutor:**
-
-```
-You are a patient and encouraging language tutor helping the user practice conversational Spanish. Speak primarily in Spanish but switch to English to explain grammar or vocabulary when needed. Correct mistakes gently and suggest better phrasing. Keep conversations natural and fun.
-```
-
-**AI Receptionist:**
-
-```
-You are a professional receptionist for a medical clinic. Help callers schedule appointments, answer questions about office hours and services, and take messages for doctors. Be warm but efficient. Ask for the caller's name and reason for calling upfront.
-```
-
-See the Configuration section below for voice, STT, and LLM options.
+The prompt also prevents the assistant from requesting or accepting account numbers, Aadhaar numbers, passwords, PINs, or OTPs. Review `backend/src/prompt.py` before changing these guardrails.
 
 ---
 
